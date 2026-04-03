@@ -1,0 +1,93 @@
+input[type="range"]::-webkit-slider-thumb {
+    border: 3px solid #3b82f6;
+    width: 20px;
+    height: 20px;
+}
+.interest_rate div {
+    padding: 0px;
+    border: 0px;
+    box-sizing: border-box;
+    background-color: transparent;
+}
+.income_boxes div {
+    background-color: #f8fafc !important;
+}
+.adminFilter .bg-white.rounded-xl.shadow-sm.relative {
+    border: none;
+    box-shadow: none !important;
+    padding-bottom: 0px;
+}
+.children_txt {
+    margin-bottom: 0px !important;
+    margin-top: 20px !important;
+}
+@media screen and (max-width: 767px) {
+
+.logo_img img {
+    width: 200px;
+    object-fit: contain;
+    height: auto !important;
+}
+
+.select_width {
+    width: 100%;
+    padding: 10px;
+}
+.font_12 {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    order: 3;
+    width: 100%;
+    text-align: right;
+}
+.clientView {
+    position: absolute !important;
+    left: 0px !important;
+    z-index: 9999;
+    top: 0 !important;
+    height: 100vh !important;
+}
+.fixed_div {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 999 !important;
+}
+.flex_wrap{
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+.submit_btn {
+    font-size: 13px !important;
+    padding: 9px 10px !important;
+}
+.propertie_box h1 {
+    font-size: 26px;
+    line-height: 1.2;
+}
+.adminFilter .bg-white.rounded-xl.shadow-sm.relative {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+.advanced_filters {
+    width: 100%;
+}
+.advanced_filters button {
+    width: 100%;
+}
+.adminFilter .grid.grid-cols-3, .adminFilter .grid.grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+.children_txt {
+    margin-bottom: 10px !important;
+    margin-top: 10px !important;
+}
+.profile_menu_mob .relative.flex.items-center.ml-4 {
+    margin-left: 6px !important;
+}
+.popup-zindex {
+    z-index: 999 !important;
+    overflow-y: auto !important;
+    align-items: start !important;
+}
+}
