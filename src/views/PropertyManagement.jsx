@@ -1488,6 +1488,7 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
         })()}
       </Modal>
 
+
       {/* Mark as Sold Confirm Modal */}
       <Modal isOpen={!!confirmSoldId} onClose={() => setConfirmSoldId(null)} title="Mark as Sold" size="sm">
         <div className="space-y-4">
