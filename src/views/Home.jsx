@@ -275,18 +275,18 @@ const Home = () => {
   return (
     <div className="bg-app min-h-screen">
 
-      <div className="p-10 max-w-7xl mx-auto">
-        <div className="bg-surface border border-border-subtle rounded-3xl p-10 mb-14 shadow-sm">
-          <h1 className="text-3xl md:text-4xl font-semibold text-primary mb-3">
+      <div className="md:p-10 p-7 max-w-7xl mx-auto">
+        <div className="bg-surface border border-border-subtle rounded-3xl md:p-10 p-6 md:mb-10 mb-6 shadow-sm">
+          <h1 className="text-2xl md:text-4xl font-semibold text-primary mb-3">
             Welcome{getDisplayName(user) ? `, ${getDisplayName(user)}` : ''}
           </h1>
           <p className="text-base text-text-secondary">
             You are {withIndefiniteArticle(getRoleLabel(role))}.
           </p>
-          <div className="mt-6 h-1 w-32 bg-accent rounded-full" />
+            <div className="md:mt-6 mt-3 h-1 w-32 bg-accent rounded-full" />
         </div>
         {/* ---------- How this platform works ---------- */}
-        <div className="bg-surface border border-border-subtle rounded-3xl p-10 mb-10 shadow-sm">
+         <div className="bg-surface border border-border-subtle rounded-3xl md:p-10 md:mb-10 shadow-sm p-6 mb-6">
           <h2 className="text-xl font-semibold text-primary mb-3">How this platform works</h2>
           <p className="text-sm text-text-secondary leading-relaxed">
             This platform showcases short-term rental investment opportunities submitted by vetted partners.
@@ -297,7 +297,7 @@ const Home = () => {
 
         {/* ---------- Role explanation ---------- */}
         {roleExplanations[role] && !isAdminLike && (
-          <div className="bg-surface border border-border-subtle rounded-3xl p-10 mb-10 shadow-sm">
+         <div className="bg-surface border border-border-subtle rounded-3xl md:p-10 md:mb-10 shadow-sm p-6 mb-6">
             <h2 className="text-xl font-semibold text-primary mb-6">{roleExplanations[role].title}</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {roleExplanations[role].items.map((item) => (
@@ -312,24 +312,24 @@ const Home = () => {
 
         {/* ---------- Quick-access cards ---------- */}
         {!isAdminLike && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-14">
-          {canSubmit(role) && (
-            <HomeCard
-              to="/submit"
-              title="Submit a Property"
-              description="Submit a property on behalf of another user."
-              image={submitPreview}
-            />
-          )}
-          {showBrowse && (
-            <HomeCard
-              to="/deals"
-              title="Browse Deals"
-              description="View published properties available to customers."
-              image={browsePreview}
-            />
-          )}
-        </div>
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:mb-14 mb-6">
+            {canSubmit(role) && (
+              <HomeCard
+                to="/submit"
+                title="Submit a Property"
+                description="Submit a property on behalf of another user."
+                image={submitPreview}
+              />
+            )}
+            {showBrowse && (
+              <HomeCard
+                to="/deals"
+                title="Browse Deals"
+                description="View published properties available to customers."
+                image={browsePreview}
+              />
+            )}
+          </div>
         )}
 
         {/* ---------- Stats Grid (admin/team_member only) ---------- */}
@@ -337,12 +337,12 @@ const Home = () => {
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
               {[
-                { label: 'Pending Registrations', value: pendingCount, sub: `${pendingCount} awaiting approval`, colorClass: 'text-blue-500', borderClass: 'bg-blue-500', loading: pendingLoading, path: '/admin/users?type=pending' },
+                { label: 'Pending Registrations', value: pendingCount, sub: `${pendingCount} awaiting approval`, colorClass: 'text-blue-500', borderClass: 'bg-blue-500', loading: pendingLoading, path: '/admin/users?type=pending', state: { from: 'dashboard' } },
                 { label: 'Active Users', value: activeUsersCount, sub: `${activeUsersCount} users active`, colorClass: 'text-teal-500', borderClass: 'bg-teal-500', loading: usersLoading, path: '/admin/users?type=active' },
                 { label: 'Deactive User', value: inActiveUserCount, sub: inActiveUserCount > 0 ? `${inActiveUserCount} users inactive` : 'No inactive users', colorClass: 'text-red-500', borderClass: 'bg-red-500', loading: usersLoading, path: '/admin/deactivated-users' },
                 { label: 'Total Users', value: totalUsers, sub: 'Total registered accounts', colorClass: 'text-green-500', borderClass: 'bg-green-500', loading: usersLoading, path: '/admin/users' },
-              ].map(({ label, value, sub, colorClass, borderClass, loading, path }) => (
-                <div key={label} onClick={() => navigate(path)} className="bg-surface border border-border-subtle rounded-2xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
+              ].map(({ label, value, sub, colorClass, borderClass, loading, path, state }) => (
+                <div key={label} onClick={() => navigate(path, { state })} className="bg-surface border border-border-subtle rounded-2xl shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
                   <div className={`h-1 w-full ${borderClass}`} />
                   <div className="p-6">
                     <p className="text-xs font-semibold uppercase tracking-widest text-text-secondary mb-3">{label}</p>
@@ -436,7 +436,7 @@ const Home = () => {
             <div className="bg-surface border border-border-subtle rounded-2xl shadow-sm mb-10 overflow-hidden">
               <div className="flex items-center justify-between px-6 py-5 border-b border-border-subtle">
                 <h2 className="text-base font-semibold text-primary">Pending User Registrations</h2>
-                <Link to="/admin/users?type=pending" className="text-sm text-blue-500 hover:underline">View all →</Link>
+                <Link to="/admin/users?type=pending" state={{ from: 'dashboard' }} className="text-sm text-blue-500 hover:underline">View all →</Link>
               </div>
               <table className="w-full text-sm">
                 <thead>

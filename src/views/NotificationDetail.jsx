@@ -234,7 +234,7 @@ const NotificationDetail = () => {
                     <div className="bg-app rounded-lg p-4">
                       <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-1">Price</p>
                       <p className="text-sm text-text-primary font-semibold">
-                        ${Number(property.price).toLocaleString()}
+                        ${Number(property.price).toLocaleString('en-US')}
                       </p>
                     </div>
                   )}
@@ -253,7 +253,7 @@ const NotificationDetail = () => {
                   {property.squareFootage && (
                     <div className="bg-app rounded-lg p-4">
                       <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-1">Sq Ft</p>
-                      <p className="text-sm text-text-primary font-medium">{Number(property.squareFootage).toLocaleString()}</p>
+                      <p className="text-sm text-text-primary font-medium">{Number(property.squareFootage).toLocaleString('en-US')}</p>
                     </div>
                   )}
                 </div>
@@ -285,13 +285,13 @@ const NotificationDetail = () => {
                   {property.downPayment && (
                     <div className="bg-app rounded-lg p-4">
                       <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-1">Down Payment</p>
-                      <p className="text-sm text-text-primary font-medium">${Number(property.downPayment).toLocaleString()}</p>
+                      <p className="text-sm text-text-primary font-medium">${Number(property.downPayment).toLocaleString('en-US')}</p>
                     </div>
                   )}
                   {property.emd && (
                     <div className="bg-app rounded-lg p-4">
                       <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-1">EMD</p>
-                      <p className="text-sm text-text-primary font-medium">${Number(property.emd).toLocaleString()}</p>
+                      <p className="text-sm text-text-primary font-medium">${Number(property.emd).toLocaleString('en-US')}</p>
                     </div>
                   )}
                   {property.expectedCloseDate && (
@@ -312,13 +312,13 @@ const NotificationDetail = () => {
                       {property.strAnnualRevenue && (
                         <div className="bg-app rounded-lg p-4">
                           <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-1">Annual Revenue</p>
-                          <p className="text-sm text-text-primary font-medium">${Number(property.strAnnualRevenue).toLocaleString()}</p>
+                          <p className="text-sm text-text-primary font-medium">${Number(property.strAnnualRevenue).toLocaleString('en-US')}</p>
                         </div>
                       )}
                       {property.strAvgDailyRate && (
                         <div className="bg-app rounded-lg p-4">
                           <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-1">Avg Daily Rate</p>
-                          <p className="text-sm text-text-primary font-medium">${Number(property.strAvgDailyRate).toLocaleString()}</p>
+                          <p className="text-sm text-text-primary font-medium">${Number(property.strAvgDailyRate).toLocaleString('en-US')}</p>
                         </div>
                       )}
                       {property.strOccupancyRate && (
@@ -330,7 +330,7 @@ const NotificationDetail = () => {
                       {property.strNetOperatingIncome && (
                         <div className="bg-app rounded-lg p-4">
                           <p className="text-xs text-text-secondary font-medium uppercase tracking-wide mb-1">Net Operating Income</p>
-                          <p className="text-sm text-text-primary font-medium">${Number(property.strNetOperatingIncome).toLocaleString()}</p>
+                          <p className="text-sm text-text-primary font-medium">${Number(property.strNetOperatingIncome).toLocaleString('en-US')}</p>
                         </div>
                       )}
                       {property.strMarketScore && (

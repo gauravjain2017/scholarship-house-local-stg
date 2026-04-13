@@ -256,14 +256,12 @@ export const dealsAPI = {
   // Customer endpoints
   getPublishedDeals: async (filters = {}) => {
 
-    if (USE_MOCK) {
-      await delay();
-      return filterAndSortPublished(filters).map(normalizeDeal);
-    }
+    // if (USE_MOCK) {
+    //   await delay();
+    //   return filterAndSortPublished(filters).map(normalizeDeal);
+    // }
 
     const params = {};
-
-    console.log(USE_MOCK,filters)
 
     if (filters.search) params.search = filters.search;
     if (filters.status && filters.status !== 'All') {
@@ -294,6 +292,7 @@ export const dealsAPI = {
     if (filters.advSqftMin) params.advSqftMin = filters.advSqftMin;
     if (filters.advSqftMax) params.advSqftMax = filters.advSqftMax;
     if (filters.selectedStates && filters.selectedStates.length > 0) params.state_regions = filters.selectedStates;
+	 if (filters.selectedStatuses && filters.selectedStatuses.length > 0) params.selectedStatuses = filters.selectedStatuses.join(',');
     // ANR & EGR per-tier filters
     ['budget', 'economy', 'midscale', 'upscale', 'luxury'].forEach((tier) => {
       if (filters[`anrMin_${tier}`]) params[`anrMin_${tier}`] = filters[`anrMin_${tier}`];
@@ -423,6 +422,16 @@ export const dealsAPI = {
 
   saveFilterSettings: async (filters) => {
     const response = await api.post(`/deals/manage-filters`, filters);
+    return response.data;
+  },
+
+  saveTaxRateSettings: async (settings) => {
+    const response = await api.post(`/deals/store-tax-rate`, settings);
+    return response.data;
+  },
+
+  getTaxRateSettings: async () => {
+    const response = await api.get(`/deals/tax-rate-settings`);
     return response.data;
   }
 };

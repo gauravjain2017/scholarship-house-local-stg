@@ -52,6 +52,10 @@ const SubmitterView = () => {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmUnsubmit, setConfirmUnsubmit] = useState(null);
 
+  // Convert camelCase field name to human-readable label
+  const fieldToLabel = (field) =>
+    field.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()).replace(/_/g, ' ');
+
   // Multi-step wizard state
   const TOTAL_STEPS = 6;
   const [currentStep, setCurrentStep] = useState(1);
@@ -647,7 +651,7 @@ const SubmitterView = () => {
         JSON.stringify(updatedDeal.videos || [])
       );
 
-      localStorage.setItem('submitterFormData', JSON.stringify(restoredFormData));
+      localStorage.setItem('submitterFormData', JSON.stringify(formData));
       setConfirmUnsubmit(null);
     } catch (err) {
       showNotification('error', 'Failed to unsubmit property. Please try again.', 'Unsubmit Failed');
@@ -661,6 +665,20 @@ const SubmitterView = () => {
       queryClient.invalidateQueries(['myDeals']);
     },
   });
+
+    const FIELD_TO_STEP = {
+    submitterRelationship: 1, category: 1, bedrooms: 1, bathrooms: 1, squareFootage: 1, description: 1,
+    streetAddress: 2, addressLine2: 2, city: 2, stateRegion: 2, postalCode: 2,
+    price: 3, financingType: 3, emd: 3, downPayment: 3, expectedCloseDate: 3, financialInfo: 3,
+    isHOA: 3, hoaMonthlyFee: 3,
+    subjLoanBalance: 3, subjInterestRate: 3, subjLoanMaturity: 3,
+    subjMonthlyPrincipal: 3, subjMonthlyInterest: 3, subjMonthlyTaxesInsurance: 3,
+    sellerLoanAmount: 3, sellerInterestRate: 3, sellerLoanMaturity: 3,
+    sellerMonthlyPayment: 3, totalMonthlyPayment: 3,
+    strConfidence: 4, turnkeyFurnished: 4, strZoning: 4,
+    occupancyRate: 4, averageNightlyRate: 4, managementCommissionPercent: 4,
+    interiorImages: 5, exteriorImages: 5, additionalImages: 5, videos: 5,
+  };
 
   const validateForm = () => {
     const { errors, firstErrorField } = validateDealForm(formData, {
@@ -706,23 +724,22 @@ const SubmitterView = () => {
 
     const firstErrorField = validateForm();
     if (firstErrorField) {
-      showNotification('warning', 'Please fix the errors in the form before submitting.', 'Validation Error');
-      const ref = errorRefs.current[firstErrorField];
-
-      if (ref) {
-        const prefersReducedMotion = window.matchMedia(
-          '(prefers-reduced-motion: reduce)'
-        ).matches;
-        ref.scrollIntoView({
-          behavior: prefersReducedMotion ? 'auto' : 'smooth',
-          block: 'center',
-        });
-
-        // Delay focus so it doesn't cancel smooth scrolling
-        setTimeout(() => {
-          ref.focus?.({ preventScroll: true });
-        }, 300);
+      // Navigate to the step that contains the first error
+      const errorStep = FIELD_TO_STEP[firstErrorField] || currentStep;
+      if (errorStep !== currentStep) {
+        setCurrentStep(errorStep);
+        scrollToTop();
       }
+      
+      showNotification('warning', 'Please fix the errors in the form before submitting.', 'Validation Error');
+      setTimeout(() => {
+        const ref = errorRefs.current[firstErrorField];
+        if (ref) {
+          ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => ref.focus?.({ preventScroll: true }), 300);
+        }
+      }, errorStep !== currentStep ? 100 : 0);
+
 
       setIsSubmitting(false);
       return;
@@ -1399,16 +1416,6 @@ const SubmitterView = () => {
               </>
             )}
 
-            {/* Show form errors above the navigation buttons */}
-            {Object.keys(errors).length > 0 && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-300 rounded">
-                <ul className="text-red-700 text-sm list-disc pl-5">
-                  {Object.entries(errors).map(([field, msg]) => (
-                    <li key={field}>{msg}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
 
             {/* Step Navigation */}
             {isSubmitted ? (
@@ -1422,7 +1429,7 @@ const SubmitterView = () => {
                 </Button>
               </div>
             ) : (
-              <div className="flex items-center justify-between pt-6 border-t border-border-subtle">
+             <div className="flex items-center justify-between pt-6 border-t border-border-subtle flex-wrap">
                 <Button
                   type="button"
                   variant="secondary"
@@ -1442,8 +1449,8 @@ const SubmitterView = () => {
                   Step {currentStep} of {TOTAL_STEPS}
                 </span>
 
-                <div className="flex items-center gap-3">
-                  {/* {currentStep < 5 && (
+                <div className="flex items-center gap-3 mt-4 md:mt-0 form_btn_width">
+                  {currentStep < 5 && (
                     <Button
                       type="button"
                       variant="outline"
@@ -1452,7 +1459,7 @@ const SubmitterView = () => {
                     >
                       {isSaving ? 'Saving...' : 'Save Draft'}
                     </Button>
-                  )} */}
+                  )}
 
                   {currentStep >= 5 ? (
                     <Button
@@ -1615,7 +1622,7 @@ const SubmitterView = () => {
                         </div>
                         <div className="text-right">
                           <p className="text-lg font-bold text-text-primary">
-                            ${parseInt(deal.price).toLocaleString()}
+                            ${parseInt(deal.price).toLocaleString('en-US')}
                           </p>
                           {deal.status === 'pending' && (
                             <Button

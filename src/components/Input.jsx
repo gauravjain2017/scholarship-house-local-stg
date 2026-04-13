@@ -1,11 +1,13 @@
-const Input = ({
+import { forwardRef } from 'react';
+
+const Input = forwardRef(({
   label,
   error,
   type = 'text',
   required = false,
   className = '',
   ...props
-}) => {
+}, ref) => {
   // Prevent e, E, +, - in number fields
   const handleKeyDown = (e) => {
     if (type === 'number' && ['e', 'E', '+', '-'].includes(e.key)) {
@@ -14,7 +16,7 @@ const Input = ({
     if (props.onKeyDown) props.onKeyDown(e);
   };
   return (
-    <div className="mb-4">
+    <div className="mb-4" ref={ref}>
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {label}
@@ -31,6 +33,8 @@ const Input = ({
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
-};
+});
+
+Input.displayName = 'Input';
 
 export default Input;

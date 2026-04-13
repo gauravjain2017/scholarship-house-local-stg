@@ -38,6 +38,18 @@ const Register = () => {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    const digitsOnly = formData.phone.replace(/\D/g, '');
+    if (digitsOnly.length < 8 || digitsOnly.length > 12) {
+      setError('Phone number must be between 8 and 12 digits');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;

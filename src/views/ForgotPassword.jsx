@@ -10,23 +10,60 @@ const ForgotPassword = () => {
   const [success, setSuccess] = useState(false);
   const [maskedEmail, setMaskedEmail] = useState('');
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setError('');
+  //   setLoading(true);
+
+  //   try {
+  //     const response = await requestPasswordReset(email);
+  //     setMaskedEmail(response.email || email);
+  //     setSuccess(true);
+  //   } catch (err) {
+  //     // Handle rate limiting specifically
+  //     if (err.response?.status === 429) {
+  //       setError('Too many password reset requests. Please try again later.');
+  //     } else {
+  //       setError(
+  //         err.response?.data?.error ||
+  //           'Failed to send password reset email. Please try again.'
+  //       );
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
+      // Basic email validation
+      if (!email.includes('@') || !email.includes('.')) {
+        setError('Please enter a valid email address.');
+        setLoading(false);
+        return;
+      }
+
       const response = await requestPasswordReset(email);
+      if (response?.success === false) {
+        setError('No account found with this email address!!!');
+        return;
+      }
+
       setMaskedEmail(response.email || email);
       setSuccess(true);
+
     } catch (err) {
-      // Handle rate limiting specifically
       if (err.response?.status === 429) {
         setError('Too many password reset requests. Please try again later.');
       } else {
         setError(
           err.response?.data?.error ||
-            'Failed to send password reset email. Please try again.'
+          err.response?.data?.message ||
+          'Failed to send password reset email. Please try again.'
         );
       }
     } finally {

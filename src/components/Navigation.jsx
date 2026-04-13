@@ -145,8 +145,8 @@ const Navigation = () => {
                <Link
                   to="/property-notifications"
                   className={`relative flex items-center md:justify-center justify-end w-10 h-10 rounded-lg md:mr-1 mr-0 transition-colors ${isNotifActive
-                    ? 'bg-surface-muted text-primary'
-                    : 'text-gray-700 hover:bg-surface-alt'
+                    ? 'text-primary'
+                    : 'text-gray-700'
                     }`}
                   aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                 >
@@ -163,7 +163,7 @@ const Navigation = () => {
                 <ProfileMenu />
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="ml-1 p-2 rounded-lg text-gray-700 hover:bg-surface-alt focus:outline-none"
+                  className="ml-1 p-2 rounded-lg text-gray-700 focus:outline-none"
                   aria-label="Toggle menu"
                 >
                   {mobileMenuOpen ? (

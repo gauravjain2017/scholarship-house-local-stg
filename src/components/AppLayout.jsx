@@ -34,6 +34,9 @@ const AppLayout = ({
       return [{ label: 'Settings', path: '/settings/filters' }, PAGE_TITLES[pathname]];
     }
     if (pathname === '/admin/users' && searchParams.get('type') === 'pending') {
+      if (location.state?.from === 'dashboard') {
+        return [{ label: 'Dashboard', path: '/' }, 'Pending Registrations'];
+      }
       return [{ label: 'User Management', path: '/admin/users' }, 'Pending Registrations'];
     }
     if (PAGE_TITLES[pathname]) return [PAGE_TITLES[pathname]];
@@ -102,7 +105,7 @@ const AppLayout = ({
                     {crumb.label}
                   </span>
                 ) : (
-                  <span className={i === breadcrumbs.length - 1 ? 'text-gray-800 font-medium' : 'text-gray-500'}>
+                  <span className={i === breadcrumbs.length - 1 ? 'text-gray-800 font-medium text-xs md:text-base' : 'text-gray-500'}>
                     {crumb}
                   </span>
                 )}

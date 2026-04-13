@@ -1,18 +1,24 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { dealsAPI } from '../api/deals';
-import { DealDetailView } from './CustomerView';
+import { DealDetailView } from './DealDetailView';
 import Loader from '../components/Loader';
 import logoDarkBlue from '../assets/icons/logo-scholarship-house/logo-title-black.png';
 
 const PublicPropertyView = () => {
   const { dealId } = useParams();
-
+  let propertyVisible = true;
   const { data: deal, isLoading, error } = useQuery({
     queryKey: ['public-deal', dealId],
     queryFn: () => dealsAPI.getPublicDealById(dealId),
     enabled: !!dealId,
   });
+
+  // After
+const ALLOWED_STATUSES = ['published', 'sold', 'pending'];
+if (!ALLOWED_STATUSES.includes(deal?.status)) {
+  propertyVisible = false;
+}
 
 
   if (isLoading) {
@@ -23,7 +29,7 @@ const PublicPropertyView = () => {
     );
   }
 
-  if (error || !deal) {
+  if (error || !deal || !propertyVisible) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">

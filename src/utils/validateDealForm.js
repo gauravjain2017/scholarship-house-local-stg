@@ -190,7 +190,7 @@ const validateCurrency = (value, field, max = 1_000_000_000) => {
 
   ['yearBuilt'].forEach((f) => validateYear(formData[f], f));
 
-  ['expectedCloseDate', 'subjLoanMaturity', 'sellerLoanMaturity'].forEach((f) =>
+  ['subjLoanMaturity', 'sellerLoanMaturity'].forEach((f) =>
     validateFutureDate(formData[f], f)
   );
 

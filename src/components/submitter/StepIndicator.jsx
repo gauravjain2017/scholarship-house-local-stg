@@ -9,7 +9,7 @@ const STEPS = [
 
 const StepIndicator = ({ currentStep, onStepClick, completedSteps = [] }) => {
   return (
-    <div className="w-full mb-8" style={{ width: '65%', marginLeft: 'auto', marginRight: 'auto' }}>
+    <div className="w-full mb-8 md:w-[65%]" style={{ marginLeft: 'auto', marginRight: 'auto' }}>
       {/* Circles + connector lines row */}
       <div className="flex items-center">
         {STEPS.map((step, index) => {
@@ -19,13 +19,8 @@ const StepIndicator = ({ currentStep, onStepClick, completedSteps = [] }) => {
 
           return (
             <div key={step.number} className="flex items-center flex-1 last:flex-none">
-              <button
-                type="button"
-                onClick={() => isClickable && onStepClick(step.number)}
-                disabled={!isClickable}
-                className={`
-                  w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold
-                  transition-all duration-200 border-2 shrink-0
+              <button type="button" onClick={() => isClickable && onStepClick(step.number)} disabled={!isClickable}
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200 border-2 shrink-0
                   ${isActive
                     ? 'bg-accent text-white border-accent shadow-md shadow-accent/30'
                     : isCompleted

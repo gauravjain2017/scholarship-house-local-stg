@@ -98,10 +98,15 @@ const RangeSlider = ({ label, min, max, step = 1, valueMin, valueMax, onChange, 
         {/* Min thumb */}
         <input
           type="range"
-          min={min} max={max} step={step}
+          min={min} max={max} step="any"
           value={localMin}
           onChange={(e) => {
-            const v = Number(e.target.value);
+            const raw = Number(e.target.value);
+            let v = Math.round((raw - min) / step) * step + min;
+            if (v < min) v = min;
+            if (v > max) v = max;
+            if (max - v < step) v = max;
+            if (v - min < step) v = min;
             if (v <= localMax) {
               setLocalMin(v);
               debouncedOnChange(v, localMax);
@@ -113,10 +118,15 @@ const RangeSlider = ({ label, min, max, step = 1, valueMin, valueMax, onChange, 
         {/* Max thumb */}
         <input
           type="range"
-          min={min} max={max} step={step}
+          min={min} max={max} step="any"
           value={localMax}
           onChange={(e) => {
-            const v = Number(e.target.value);
+            const raw = Number(e.target.value);
+            let v = Math.round((raw - min) / step) * step + min;
+            if (v < min) v = min;
+            if (v > max) v = max;
+            if (max - v < step) v = max;
+            if (v - min < step) v = min;
             if (v >= localMin) {
               setLocalMax(v);
               debouncedOnChange(localMin, v);
@@ -365,7 +375,7 @@ export default function FilterBar({
     if (!filterConfig) return true;
     return keys.some((key) => isFilterEnabled(key));
   };
-  const [openSection, setOpenSection] = useState('location');
+  const [openSection, setOpenSection] = useState('status');
 
   const toggleSection = (key) => {
     setOpenSection((prev) => (prev === key ? null : key));
@@ -497,6 +507,10 @@ export default function FilterBar({
       });
     }
 
+    if (filters.fiftyFiftyPartner) {
+      active.push({ key: 'fiftyFiftyPartner', label: 'Flag', value: '50-50 Partnership' });
+    }
+
     if (filters.submitterSearch) {
       active.push({
         key: 'submitterSearch',
@@ -512,6 +526,16 @@ export default function FilterBar({
         value: filters.selectedStates.length <= 3
           ? filters.selectedStates.join(', ')
           : `${filters.selectedStates.length} selected`,
+      });
+    }
+
+    if (filters.selectedStatuses && filters.selectedStatuses.length < 3) {
+      active.push({
+        key: 'selectedStatuses',
+        label: 'Status',
+        value: filters.selectedStatuses.length === 0
+          ? 'None'
+          : filters.selectedStatuses.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', '),
       });
     }
 
@@ -591,12 +615,71 @@ export default function FilterBar({
       });
     }
 
+    if (filters.selectedTags?.length > 0) {
+      active.push({
+        key: 'selectedTags',
+        label: 'Tags',
+        value: `${filters.selectedTags.length} selected`,
+      });
+    }
     if (filters.travelMotivations?.length > 0) {
       active.push({
         key: 'travelMotivations',
         label: 'Motivations',
         value: `${filters.travelMotivations.length} selected`,
       });
+    }
+
+    // Property Type (advanced accordion filter)
+    if (filters.advPropertyType) {
+      const label = filters.advPropertyType.replace(/_/g, ' ');
+      active.push({ key: 'advPropertyType', label: 'Property Type', value: label });
+    }
+
+    // Year Built
+    if (filters.advYearBuiltMin) {
+      active.push({ key: 'advYearBuiltMin', label: 'Year Built Min', value: filters.advYearBuiltMin });
+    }
+    if (filters.advYearBuiltMax) {
+      active.push({ key: 'advYearBuiltMax', label: 'Year Built Max', value: filters.advYearBuiltMax });
+    }
+
+    // Square Feet
+    if (filters.advSqftMin) {
+      active.push({ key: 'advSqftMin', label: 'Min Sq Ft', value: Number(filters.advSqftMin).toLocaleString() });
+    }
+    if (filters.advSqftMax) {
+      active.push({ key: 'advSqftMax', label: 'Max Sq Ft', value: Number(filters.advSqftMax).toLocaleString() });
+    }
+
+    // Turnkey / Furnished
+    if (filters.turnkeyFurnished) {
+      const label = filters.turnkeyFurnished === 'FURNISHED' ? 'Furnished' : 'Not Furnished';
+      active.push({ key: 'turnkeyFurnished', label: 'Turnkey / Furnished', value: label });
+    }
+
+    // Est. Occupancy
+    if (filters.occupancyRateMin) {
+      active.push({ key: 'occupancyRateMin', label: 'Min Occupancy', value: `${filters.occupancyRateMin}%` });
+    }
+    if (filters.occupancyRateMax && Number(filters.occupancyRateMax) < 100) {
+      active.push({ key: 'occupancyRateMax', label: 'Max Occupancy', value: `${filters.occupancyRateMax}%` });
+    }
+
+    // Tax Benefits - Income Reduction
+    if (filters.incomeReductionMin) {
+      active.push({ key: 'incomeReductionMin', label: 'Min Income Reduction', value: `$${Number(filters.incomeReductionMin).toLocaleString()}` });
+    }
+    if (filters.incomeReductionMax) {
+      active.push({ key: 'incomeReductionMax', label: 'Max Income Reduction', value: `$${Number(filters.incomeReductionMax).toLocaleString()}` });
+    }
+
+    // Tax Benefits - Est. Tax Savings
+    if (filters.taxSavingsMin) {
+      active.push({ key: 'taxSavingsMin', label: 'Min Tax Savings', value: `$${Number(filters.taxSavingsMin).toLocaleString()}` });
+    }
+    if (filters.taxSavingsMax) {
+      active.push({ key: 'taxSavingsMax', label: 'Max Tax Savings', value: `$${Number(filters.taxSavingsMax).toLocaleString()}` });
     }
 
     return active;
@@ -617,19 +700,30 @@ export default function FilterBar({
       advBathroomsMax: '',
       advYearBuiltMin: '',
       advYearBuiltMax: '',
+      advSqftMin: '',
+      advSqftMax: '',
       advFinancing: '',
       turnkey: false,
+      turnkeyFurnished: '',
       priorityFirstAccess: false,
       submitterSearch: '',
       selectedStates: [],
+      selectedStatuses: ['published', 'sold', 'pending'],
       vacationRentalMarkets: [],
       travelMotivations: [],
+      selectedTags: [],
       minDownPayment: '',
       maxDownPayment: '',
       interestRateMin: '',
       subjectToInterestRateMax: '',
       advMonthlyPaymentMin: '',
       advMonthlyPaymentMax: '',
+      occupancyRateMin: '',
+      occupancyRateMax: '',
+      incomeReductionMin: '',
+      incomeReductionMax: '',
+      taxSavingsMin: '',
+      taxSavingsMax: '',
     };
 
     updateFilters((p) => ({ ...p, [key]: defaultValues[key] ?? '' }));
@@ -665,11 +759,16 @@ export default function FilterBar({
       hoaMonthlyFeeMin: '',
       hoaMonthlyFeeMax: '',
       turnkey: false,
+      turnkeyFurnished: '',
       priorityFirstAccess: false,
       fiftyFiftyPartner: false,
       doneForYou: false,
       occupancyRateMin: '',
       occupancyRateMax: '',
+      incomeReductionMin: '',
+      incomeReductionMax: '',
+      taxSavingsMin: '',
+      taxSavingsMax: '',
       avgNightlyRateMin: '',
       avgNightlyRateMax: '',
       anrMin_budget: '', anrMax_budget: '',
@@ -683,8 +782,10 @@ export default function FilterBar({
       egrMin_upscale: '', egrMax_upscale: '',
       egrMin_luxury: '', egrMax_luxury: '',
       selectedStates: [],
+      selectedStatuses: ['published', 'sold', 'pending'],
       vacationRentalMarkets: [],
       travelMotivations: [],
+      selectedTags: [],
       subjectToInterestRateMax: '',
     }));
     setCurrentPage?.(1);
@@ -696,6 +797,52 @@ export default function FilterBar({
 
   const renderFilterSections = () => (
     <>
+     
+
+      {/* 50-50 Partnership Filter */}
+      {isFilterEnabled('fiftyFiftyPartner') && (
+      <div className="px-4 py-3 border-b border-gray-100">
+        <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600">
+          <input
+            type="checkbox"
+            checked={!!filters.fiftyFiftyPartner}
+            onChange={(e) => { setFilters((p) => ({ ...p, fiftyFiftyPartner: e.target.checked })); setCurrentPage?.(1); }}
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          50-50 Partnership Opportunity
+        </label>
+      </div>
+      )}
+	  
+	  
+      {/* Status Filter */}
+      <AccordionSection title="Property Status" icon={<span role="img" aria-label="status">&#x1F3F7;</span>} open={openSection === 'status'} onToggle={() => toggleSection('status')}>
+        <div className="flex flex-col gap-1.5">
+          {[
+            { value: 'published', label: 'Published' },
+            { value: 'pending', label: 'Pending' },
+            { value: 'sold', label: 'Sold' },
+          ].map(({ value, label }) => (
+            <label key={value} className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600">
+              <input
+                type="checkbox"
+                checked={(filters.selectedStatuses || ['published', 'sold', 'pending']).includes(value)}
+                onChange={(e) => {
+                  const current = filters.selectedStatuses || ['published', 'sold', 'pending'];
+                  const updated = e.target.checked
+                    ? [...current, value]
+                    : current.filter((s) => s !== value);
+                  setFilters((p) => ({ ...p, selectedStatuses: updated }));
+                  setCurrentPage?.(1);
+                }}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </AccordionSection>
+
       {/* 1. Location (State) */}
       {isFilterEnabled('selectedStates') && (
       <AccordionSection title="Location (State)" icon={<span role="img" aria-label="location">&#x1F4CD;</span>} open={openSection === 'location'} onToggle={() => toggleSection('location')}>
@@ -866,18 +1013,20 @@ export default function FilterBar({
             {isFilterEnabled('yearBuilt') && (() => { const rc = getRangeConfig('yearBuilt', { min: 1900, max: currentYear, step: 1 }); return (
             <RangeSlider
               label="Year Built"
-              min={rc.min} max={rc.max} step={rc.step}
+              min={rc.min} max={rc.max} step={Math.max(1, Math.round(rc.step))}
               valueMin={Number(filters.advYearBuiltMin) || rc.min}
               valueMax={Number(filters.advYearBuiltMax) || rc.max}
               onChange={(lo, hi) => {
+                const loInt = Math.round(lo);
+                const hiInt = Math.round(hi);
                 updateFilters((p) => ({
                   ...p,
-                  advYearBuiltMin: lo === rc.min ? '' : String(lo),
-                  advYearBuiltMax: hi === rc.max ? '' : String(hi),
+                  advYearBuiltMin: loInt === rc.min ? '' : String(loInt),
+                  advYearBuiltMax: hiInt === rc.max ? '' : String(hiInt),
                 }));
                 setCurrentPage?.(1);
               }}
-              format={(v) => Number(v)}
+              format={(v) => Math.round(Number(v))}
             />); })()}
           </div>
           {isFilterEnabled('sqft') && (() => { const rc = getRangeConfig('sqft', { min: 0, max: 10000, step: 100 }); return (
@@ -1103,6 +1252,38 @@ export default function FilterBar({
       </AccordionSection>
       )}
 
+      {/* 7c. Tags Filter */}
+      <AccordionSection title="Tags" icon={<span role="img" aria-label="tags">&#x1F3F7;</span>} open={openSection === 'tagsFilter'} onToggle={() => toggleSection('tagsFilter')}>
+        <div className={`grid ${sidebarMode ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
+          {[
+            { key: 'jv',         label: '50/50 Joint Venture',     icon: '🤝' },
+            { key: 'turnkey',    label: 'Turnkey Fully Furnished', icon: '🏠' },
+            { key: 'creative',   label: 'Creative Financing',      icon: '💡' },
+            { key: 'lowrate',    label: 'Low Interest Rate',       icon: '📉' },
+            { key: 'lowentry',   label: 'Low Entry Fee',           icon: '🔑' },
+            { key: 'discounted', label: 'Discounted Price',        icon: '🏷️' },
+          ].map(({ key, label, icon }) => (
+            <label key={key} className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600">
+              <input
+                type="checkbox"
+                checked={(filters.selectedTags || []).includes(key)}
+                onChange={() => {
+                  const current = filters.selectedTags || [];
+                  const updated = current.includes(key)
+                    ? current.filter((t) => t !== key)
+                    : [...current, key];
+                  updateFilters((p) => ({ ...p, selectedTags: updated }));
+                  setCurrentPage?.(1);
+                }}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>{icon}</span>
+              {label}
+            </label>
+          ))}
+        </div>
+      </AccordionSection>
+
       {/* 8. Tax Benefits */}
       {isSectionEnabled(['incomeReduction', 'taxSavings']) && (
       <AccordionSection title="Tax Benefits" icon={<span role="img" aria-label="document">&#x1F4C4;</span>} open={openSection === 'tax'} onToggle={() => toggleSection('tax')}>
@@ -1166,12 +1347,12 @@ export default function FilterBar({
                 onRemove={() => clearFilter(filter.key)}
               />
             ))}
-            <button
+            {/* <button
               onClick={clearAllFilters}
               className="ml-1 text-xs text-red-400 hover:text-red-600 hover:underline transition-colors"
             >
               Clear All
-            </button>
+            </button> */}
           </div>
         )}
       </div>
@@ -1349,12 +1530,6 @@ export default function FilterBar({
               onRemove={() => clearFilter(filter.key)}
             />
           ))}
-          <button
-            onClick={clearAllFilters}
-            className="ml-1 text-xs text-red-400 hover:text-red-600 hover:underline transition-colors"
-          >
-            Clear All
-          </button>
         </div>
       )}
     </div>

@@ -20,6 +20,7 @@ import PropertyNotification from './views/PropertyNotification';
 import PropertyNotificationDetail from './views/PropertyNotificationDetail';
 
 import CustomerView from './views/CustomerView';
+import DealDetailPage from './views/DealDetailView';
 import FavoriteProperty from './views/FavoriteProperty';
 import Login from './views/Login';
 import Register from './views/Register';
@@ -32,6 +33,8 @@ import ManageClientHome from './views/settings/ManageClientHome';
 import ManageSubmitterHome from './views/settings/ManageSubmitterHome';
 import MyDisputes from './views/MyDisputes';
 import PublicPropertyView from './views/PublicPropertyView';
+import ClientHomePage from './views/ClientHomePage';
+import SubmitterHomePage from './views/SubmitterHomePage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -68,6 +71,15 @@ function App() {
           {/* ── Public property view (no auth, no sidebar/header) ── */}
           <Route path="/property/:dealId" element={<PublicPropertyView />} />
 
+          {/* ── Client Home Page (renders saved layout from localStorage) ── */}
+          <Route path="/client-home" element={<ClientHomePage />} />
+          {/* ── Submitter Home Page (renders saved layout for submitters) ── */}
+          <Route path="/submitter-home" element={<SubmitterHomePage />} />
+
+          {/* ── Full-page routes (no sidebar) ── */}
+          <Route path="/settings/client-home" element={<ProtectedRoute><ManageClientHome /></ProtectedRoute>} />
+          <Route path="/settings/submitter-home" element={<ProtectedRoute><ManageSubmitterHome /></ProtectedRoute>} />
+
           {/* ── Protected routes — layout decided by RoleLayout ── */}
           <Route element={<ProtectedRoute><RoleLayout /></ProtectedRoute>}>
             <Route path="/" element={<Home />} />
@@ -84,12 +96,11 @@ function App() {
             <Route path="/notifications" element={<Notification />} />
             <Route path="/notifications/:id" element={<NotificationDetail />} />
             <Route path="/deals" element={<ProtectedRoute blockRole="submitter"><CustomerView /></ProtectedRoute>} />
-            <Route path="/deals/:dealId" element={<ProtectedRoute blockRole="submitter"><CustomerView /></ProtectedRoute>} />
+            <Route path="/deal-details/:dealId" element={<ProtectedRoute blockRole="submitter"><DealDetailPage /></ProtectedRoute>} />
 
             <Route path="/settings/filters" element={<ManageFilters />} />
             <Route path="/settings/tax-rates" element={<ManageTaxRates />} />
-            <Route path="/settings/client-home" element={<ManageClientHome />} />
-            <Route path="/settings/submitter-home" element={<ManageSubmitterHome />} />
+            {/* ManageClientHome & ManageSubmitterHome moved outside RoleLayout for full-page view */}
             <Route path="/settings" element={<Navigate to="/settings/filters" replace />} />
             <Route path="/favorite-properties" element={<ProtectedRoute blockRole="submitter"><FavoriteProperty /></ProtectedRoute>} />
             <Route path="/favorite-properties/:dealId" element={<ProtectedRoute blockRole="submitter"><FavoriteProperty /></ProtectedRoute>} />

@@ -26,6 +26,10 @@ import {
 } from '../utils/format';
 import { deriveTurnkey } from '../utils/turnkey';
 
+// Convert camelCase field name to human-readable label
+const fieldToLabel = (field) =>
+  field.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()).replace(/_/g, ' ');
+
 // Utility function to format numbers with commas
 const formatPrice = (price) => {
   const parsed = parseFloat(price);
@@ -122,11 +126,10 @@ const Pagination = ({ currentPage, totalItems, onPageChange }) => {
           <button
             key={p}
             onClick={() => onPageChange(p)}
-            className={`px-3 py-1 rounded text-sm border transition-colors ${
-              p === currentPage
-                ? 'bg-primary text-white border-primary'
-                : 'border-border-subtle hover:bg-app text-text-primary'
-            }`}
+            className={`px-3 py-1 rounded text-sm border transition-colors ${p === currentPage
+              ? 'bg-primary text-white border-primary'
+              : 'border-border-subtle hover:bg-app text-text-primary'
+              }`}
           >
             {p}
           </button>
@@ -235,7 +238,7 @@ const PropertyManagement = () => {
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (actionMenuRef.current && !actionMenuRef.current.contains(e.target) &&
-          actionBtnRef.current && !actionBtnRef.current.contains(e.target)) {
+        actionBtnRef.current && !actionBtnRef.current.contains(e.target)) {
         setOpenActionMenu(null);
       }
     };
@@ -283,7 +286,7 @@ const PropertyManagement = () => {
   const [disputeAdminNotes, setDisputeAdminNotes] = useState('');
   const [disputeStatusFilter, setDisputeStatusFilter] = useState('All');
 
-  
+
 
   // Reset to page 1 when filters or sort change
   useEffect(() => { setDealPage(1); }, [filters, sortField, sortDirection]);
@@ -293,6 +296,15 @@ const PropertyManagement = () => {
     queryKey: ['adminDeals', filters],
     queryFn: () => dealsAPI.getAllDeals(filters),
   });
+
+  // console.log('deals : ',deals)
+
+  const dealId = "8c925576-5ca1-4a31-9b63-0439c7339360";
+  const selectedDeal1 = deals?.find(
+    (deal) => deal.id === dealId
+  );
+  console.log(selectedDeal1);
+
 
   // Fetch disputes
   const {
@@ -401,6 +413,8 @@ const PropertyManagement = () => {
     mutationFn: ({ dealId, updates }) => dealsAPI.updateDeal(dealId, updates),
     onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['adminDeals'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['publishedDeals'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['deal'], exact: false });
       await queryClient.refetchQueries({ queryKey: ['adminDeals'], exact: false });
       setEditingDeal(null);
       showNotification('success', 'The deal has been updated successfully!', 'Deal Updated');
@@ -428,6 +442,19 @@ const PropertyManagement = () => {
     },
     onError: (err) => {
       showNotification('error', err?.response?.data?.error || err?.message || 'Failed to revert sold status', 'Action Failed');
+    },
+  });
+
+  const markAsPendingMutation = useMutation({
+    mutationFn: (dealId) => dealsAPI.updateDeal(dealId, { status: 'pending' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminDeals'], exact: false });
+      queryClient.invalidateQueries(['publishedDeals']);
+      queryClient.invalidateQueries({ queryKey: ['myDeals'], exact: false });
+      showNotification('success', 'Deal has been marked as pending.', 'Status Updated');
+    },
+    onError: (err) => {
+      showNotification('error', err?.response?.data?.error || err?.message || 'Failed to mark deal as pending', 'Action Failed');
     },
   });
 
@@ -469,7 +496,13 @@ const PropertyManagement = () => {
     setConfirmUnpublishId(dealId);
   };
 
+  const handleMarkAsPending = (dealId) => {
+    if (markAsPendingMutation.isPending) return;
+    markAsPendingMutation.mutate(dealId);
+  };
+
   const handleEdit = async (deal) => {
+    setEditErrors({});
     let nextDeal = { ...deal };
     const email = deal.submitterEmail || deal.email || null;
 
@@ -491,7 +524,7 @@ const PropertyManagement = () => {
     });
   };
 
-  const openUnderwriting = (deal) => setUnderwritingDeal({ ...deal });
+  const openUnderwriting = (deal) => { setEditErrors({}); setUnderwritingDeal({ ...deal }); };
 
 
   const validateAdminEdit = () => {
@@ -500,7 +533,7 @@ const PropertyManagement = () => {
       requireRequiredFields: true,
     });
     setEditErrors(errors);
-    return firstErrorField;
+    return { firstErrorField, errors };
   };
 
   const validateUnderwriting = () => {
@@ -510,15 +543,21 @@ const PropertyManagement = () => {
       requireRequiredFields: false,
     });
     setEditErrors(errors);
-    return firstErrorField;
+    return { firstErrorField, errors };
   };
 
   const normalizeForSave = (deal) => {
     const normalizeEmpty = (v) => (v === '' || v === undefined ? null : v);
     const stripNumber = (v) => (typeof v === 'string' ? v.replace(/[^0-9.-]/g, '') : v);
 
+    // Convert all empty strings to null
+    const normalized = {};
+    Object.keys(deal).forEach((key) => {
+      normalized[key] = normalizeEmpty(deal[key]);
+    });
+
     return {
-      ...deal,
+      ...normalized,
       price: stripNumber(deal.price),
       hoaMonthlyFee: stripNumber(deal.hoaMonthlyFee),
       emd: stripNumber(deal.emd),
@@ -547,9 +586,12 @@ const PropertyManagement = () => {
   };
 
   const saveEdit = async () => {
-    const firstErrorField = validateAdminEdit();
+    const { firstErrorField, errors } = validateAdminEdit();
     if (firstErrorField) {
-      showNotification('warning', 'Please fix the errors before saving.', 'Validation Error');
+      const errorMessages = Object.entries(errors).slice(0, 5).map(([field, msg]) => `${fieldToLabel(field)}: ${msg}`).join('\n• ');
+      const extraCount = Object.keys(errors).length - 5;
+      const suffix = extraCount > 0 ? `\n...and ${extraCount} more` : '';
+      showNotification('warning', `• ${errorMessages}${suffix}`, 'Validation Error');
       const ref = editErrorRefs.current[firstErrorField];
       ref?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       ref?.focus?.();
@@ -571,17 +613,42 @@ const PropertyManagement = () => {
   };
 
   const saveUnderwriting = async () => {
-    const firstErrorField = validateUnderwriting();
+    const { firstErrorField, errors } = validateUnderwriting();
     if (firstErrorField) {
-      showNotification('warning', 'Please fix the errors before saving underwriting.', 'Validation Error');
+      const errorMessages = Object.entries(errors).slice(0, 5).map(([field, msg]) => `${fieldToLabel(field)}: ${msg}`).join('\n• ');
+      const extraCount = Object.keys(errors).length - 5;
+      const suffix = extraCount > 0 ? `\n...and ${extraCount} more` : '';
+      showNotification('warning', `• ${errorMessages}${suffix}`, 'Validation Error');
       const ref = editErrorRefs.current[firstErrorField];
       ref?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => ref?.focus?.({ preventScroll: true }), 300);
       return;
     }
 
+    const totalOneTime = (
+      (Number(underwritingDeal.expenseEntryDownPayment) || 0) +
+      (Number(underwritingDeal.expenseClosingCosts) || 0) +
+      (Number(underwritingDeal.expenseDesignFurnishing) || 0)
+    );
+
+    const totalAnnualExpenses = (
+      (Number(underwritingDeal.expensePrincipalInterest) || 0) +
+      (Number(underwritingDeal.expensePropertyTaxes) || 0) +
+      (Number(underwritingDeal.expenseInsurance) || 0) +
+      (Number(underwritingDeal.expenseManagement) || 0) +
+      (Number(underwritingDeal.expenseOTAFees) || 0) +
+      (Number(underwritingDeal.expenseCleaning) || 0) +
+      (Number(underwritingDeal.expenseMaintenanceRepairs) || 0) +
+      (Number(underwritingDeal.expenseHOAFees) || 0) +
+      (Number(underwritingDeal.expenseSalesTax) || 0) +
+      (Number(underwritingDeal.expenseAdvertising) || 0) +
+      (Number(underwritingDeal.expenseMisc) || 0)
+    );
+
     const normalized = normalizeUnderwritingForSave({
       ...underwritingDeal,
+      expenseTotalOneTime: totalOneTime,
+      expenseTotalAnnual: totalAnnualExpenses,
       underwritingImages: await normalizeMediaArray(underwritingDeal.underwritingImages || []),
     });
     const { id, ...updates } = normalized;
@@ -705,13 +772,12 @@ const PropertyManagement = () => {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            dispute.status === 'resolved' || dispute.status === 'auto_resolved'
-                              ? 'bg-green-100 text-green-700'
-                              : dispute.status === 'pending_review'
-                                ? 'bg-blue-100 text-blue-700'
-                                : 'bg-yellow-100 text-yellow-700'
-                          }`}>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${dispute.status === 'resolved' || dispute.status === 'auto_resolved'
+                            ? 'bg-green-100 text-green-700'
+                            : dispute.status === 'pending_review'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                            }`}>
                             {dispute.status.replace(/_/g, ' ')}
                           </span>
                         </td>
@@ -844,7 +910,7 @@ const PropertyManagement = () => {
       {/* ===================== */}
       {/* Property Management Dashboard */}
       {/* ===================== */}
-      <h1 className="text-3xl font-bold text-text-primary mb-8">
+      <h1 className="text-2xl md:text-3xl font-bold text-text-primary mb-8">
         Property Management Dashboard
       </h1>
 
@@ -879,268 +945,292 @@ const PropertyManagement = () => {
       </div>
 
       {/* Properties Table */}
-	  
-<div className="table-card bg-surface border border-border-subtle rounded-xl shadow-sm">
- 
 
-	 {isLoading ? (
-  <Loader />
-) : filteredDeals.length === 0 ? (
-  <div className="p-8 text-center text-text-secondary">
-    No properties found matching your filters
-  </div>
-) : (
-  <div className="relative">
-    
-	
-	
-<div className="flex w-full items-center">
-  <div className="ml-auto flex gap-2 mt-2 mr-2">
+      <div className="table-card bg-surface border border-border-subtle rounded-xl shadow-sm">
 
-    {/* LEFT BUTTON */}
-    <button
-      onClick={() =>
-        document
-          .getElementById("tableScroll")
-          .scrollBy({ left: -300, behavior: "smooth" })
-      }
-      className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-4 h-4 text-gray-500 hover:text-gray-700"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-      </svg>
-    </button>
 
-    {/* RIGHT BUTTON */}
-    <button
-      onClick={() =>
-        document
-          .getElementById("tableScroll")
-          .scrollBy({ left: 300, behavior: "smooth" })
-      }
-      className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-4 h-4 text-gray-500 hover:text-gray-700"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
-    </button>
+        {isLoading ? (
+          <Loader />
+        ) : filteredDeals.length === 0 ? (
+          <div className="p-8 text-center text-text-secondary">
+            No properties found matching your filters
+          </div>
+        ) : (
+          <div className="relative">
 
-  </div>
-</div>
 
-   <div id="tableScroll" className="overflow-x-auto overflow-y-visible relative">
-      <table className="w-full relative">
-        
-        {/* HEADER */}
-        <thead className="bg-surface border-b">
-          <tr>
-            <SortableHeader label="Submitted" field="submittedAt" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[100px]" />
-            <SortableHeader label="Title" field="title" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[180px] max-w-[260px]" />
-            <SortableHeader label="Full Address" field="streetAddress" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[200px]" />
-            <SortableHeader label="Submitted By" field="submitterName" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[130px]" />
-            <SortableHeader label="Price" field="price" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[90px]" />
-            <SortableHeader label="Down Payment" field="downPayment" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[110px]" />
-            <SortableHeader label="Interest Rate" field="subjInterestRate" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[110px]" />
-            <SortableHeader label="Monthly Payment" field="totalMonthlyPayment" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[130px]" />
-            <SortableHeader label="Priority" field="priorityFirstAccess" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[90px]" />
-            <SortableHeader label="Financing" field="financingType" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[100px]" />
 
-            {/* ✅ STICKY STATUS */}
-            <SortableHeader
-              label="Status"
-              field="status"
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSort={handleSort}
-              className="min-w-[90px] sticky right-[60px] bg-surface z-20"
-            />
+            <div className="flex w-full items-center">
+              <div className="ml-auto flex gap-2 mt-2 mr-2">
 
-            {/* ✅ STICKY ACTION */}
-            <th className="px-3 py-3 text-center text-xs font-medium text-text-secondary uppercase min-w-[60px] sticky right-0 bg-surface z-20">
-              Actions
-            </th>
-          </tr>
-        </thead>
+                {/* LEFT BUTTON */}
+                <button
+                  onClick={() =>
+                    document
+                      .getElementById("tableScroll")
+                      .scrollBy({ left: -300, behavior: "smooth" })
+                  }
+                  className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4 text-gray-500 hover:text-gray-700"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
 
-        {/* BODY */}
-        <tbody className="divide-y">
-          {paginatedDeals.map((deal) => (
-            <tr
-              key={deal.id}
-              className="hover:bg-app cursor-pointer"
-              onClick={() => navigate(`/deals/${deal.id}`, { state: { from: 'admin-properties' } })}
-            >
+                {/* RIGHT BUTTON */}
+                <button
+                  onClick={() =>
+                    document
+                      .getElementById("tableScroll")
+                      .scrollBy({ left: 300, behavior: "smooth" })
+                  }
+                  className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-4 h-4 text-gray-500 hover:text-gray-700"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
 
-              <td className={`px-3 py-3 text-sm text-text-secondary min-w-[100px] ${dimClass(deal)}`}>
-                {deal.submittedAt ? new Date(deal.submittedAt).toLocaleDateString() : '—'}
-              </td>
+              </div>
+            </div>
 
-              <td className={`px-3 py-3 font-medium text-text-primary min-w-[180px] max-w-[260px] ${dimClass(deal)}`}>
-                {truncateTitle(deal.title)}
-              </td>
+            <div id="tableScroll" className="overflow-x-auto overflow-y-visible relative">
+              <table className="w-full relative">
 
-              <td className={`px-3 py-3 text-sm text-text-primary min-w-[200px] ${dimClass(deal)}`}>
-                {[deal.streetAddress, deal.city, deal.stateRegion, deal.postalCode].filter(Boolean).join(', ') || '—'}
-              </td>
+                {/* HEADER */}
+                <thead className="bg-surface border-b">
+                  <tr>
+                    <SortableHeader label="Submitted" field="submittedAt" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[100px]" />
+                    <SortableHeader label="Title" field="title" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[180px] max-w-[260px]" />
+                    <SortableHeader label="Full Address" field="streetAddress" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[200px]" />
+                    <SortableHeader label="Submitted By" field="submitterName" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[130px]" />
+                    <SortableHeader label="Price" field="price" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[90px]" />
+                    <SortableHeader label="Down Payment" field="downPayment" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[110px]" />
+                    <SortableHeader label="Interest Rate" field="subjInterestRate" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[110px]" />
+                    <SortableHeader label="Monthly Payment" field="totalMonthlyPayment" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[130px]" />
+                    <SortableHeader label="Priority" field="priorityFirstAccess" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[90px]" />
+                    <SortableHeader label="Financing" field="financingType" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[100px]" />
 
-              <td className={`px-3 py-3 text-sm text-text-primary min-w-[130px] ${dimClass(deal)}`}>
-                {deal.submitterName || '—'}
-              </td>
+                    {/* ✅ STICKY STATUS */}
+                    <SortableHeader
+                      label="Status"
+                      field="status"
+                      sortField={sortField}
+                      sortDirection={sortDirection}
+                      onSort={handleSort}
+                      className="min-w-[90px] sticky right-[60px] bg-surface z-20"
+                    />
 
-              <td className={`px-3 py-3 text-sm font-bold text-text-primary min-w-[90px] ${dimClass(deal)}`}>
-                ${formatPrice(deal.price)}
-              </td>
+                    {/* ✅ STICKY ACTION */}
+                    <th className="px-3 py-3 text-center text-xs font-medium text-text-secondary uppercase min-w-[60px] sticky right-0 bg-surface z-20">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
 
-              <td className={`px-3 py-3 text-sm min-w-[110px] ${dimClass(deal)}`}>
-                {deal.downPayment ? `$${formatPrice(deal.downPayment)}` : '—'}
-              </td>
+                {/* BODY */}
+                <tbody className="divide-y">
+                  {paginatedDeals.map((deal) => (
+                    <tr
+                      key={deal.id}
+                      className="hover:bg-app cursor-pointer"
+                      onClick={() => navigate(`/deal-details/${deal.id}`, { state: { from: '/admin/properties' } })}
+                    >
 
-              <td className={`px-3 py-3 text-sm min-w-[110px] ${dimClass(deal)}`}>
-                {deal.subjInterestRate ? `${deal.subjInterestRate}%` : '—'}
-              </td>
+                      <td className={`px-3 py-3 text-sm text-text-secondary min-w-[100px] ${dimClass(deal)}`}>
+                        {deal.submittedAt ? new Date(deal.submittedAt).toLocaleDateString() : '—'}
+                      </td>
 
-              <td className={`px-3 py-3 text-sm min-w-[130px] ${dimClass(deal)}`}>
-                {deal.totalMonthlyPayment ? `$${formatPrice(deal.totalMonthlyPayment)}` : '—'}
-              </td>
+                      <td className={`px-3 py-3 font-medium text-text-primary min-w-[180px] max-w-[260px] ${dimClass(deal)}`}>
+                        {truncateTitle(deal.title)}
+                      </td>
 
-              <td className={`px-3 py-3 min-w-[90px] ${dimClass(deal)}`}>
-                {deal.priorityFirstAccess && (
-                  <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
-                    Premium
-                  </span>
-                )}
-              </td>
+                      <td className={`px-3 py-3 text-sm text-text-primary min-w-[200px] ${dimClass(deal)}`}>
+                        {[deal.streetAddress, deal.city, deal.stateRegion, deal.postalCode].filter(Boolean).join(', ') || '—'}
+                      </td>
 
-              <td className={`px-3 py-3 text-sm min-w-[100px] ${dimClass(deal)}`}>
-                {FINANCING_LABELS[deal.financingType?.toLowerCase()] || deal.financingType || ''}
-              </td>
+                      <td className={`px-3 py-3 text-sm text-text-primary min-w-[130px] ${dimClass(deal)}`}>
+                        {deal.submitterName || '—'}
+                      </td>
 
-              {/* ✅ STICKY STATUS CELL */}
-              <td className={`px-3 py-3 min-w-[90px] sticky right-[60px] bg-white z-10 ${dimClass(deal)}`}>
-                <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
-                  {deal.status}
-                </span>
-              </td>
+                      <td className={`px-3 py-3 text-sm font-bold text-text-primary min-w-[90px] ${dimClass(deal)}`}>
+                        ${formatPrice(deal.price)}
+                      </td>
 
-              {/* ✅ STICKY ACTION CELL */}
-          <td
-  className="px-3 py-3 text-center min-w-[60px] sticky right-0 bg-white z-20"
-  onClick={(e) => e.stopPropagation()}
->
-                <div className="relative inline-block">
-                     
+                      <td className={`px-3 py-3 text-sm min-w-[110px] ${dimClass(deal)}`}>
+                        {deal.downPayment ? `$${formatPrice(deal.downPayment)}` : '—'}
+                      </td>
 
-			<button
-			ref={openActionMenu === deal.id ? actionBtnRef : undefined}
-			className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-text-secondary hover:text-text-primary"
-			onClick={(e) => toggleActionMenu(deal.id, e.currentTarget)} 
-			title="Actions"
-			>
-			<HiOutlineCog6Tooth className="w-5 h-5" />
-			</button>
-			{openActionMenu === deal.id && (
-			<div
-			ref={actionMenuRef}
-			className={`absolute right-0 bg-white border border-border-subtle rounded-xl shadow-lg p-2 min-w-[170px]
+                      <td className={`px-3 py-3 text-sm min-w-[110px] ${dimClass(deal)}`}>
+                        {deal.subjInterestRate ? `${deal.subjInterestRate}%` : '—'}
+                      </td>
+
+                      <td className={`px-3 py-3 text-sm min-w-[130px] ${dimClass(deal)}`}>
+                        {deal.totalMonthlyPayment ? `$${formatPrice(deal.totalMonthlyPayment)}` : '—'}
+                      </td>
+
+                      <td className={`px-3 py-3 min-w-[90px] ${dimClass(deal)}`}>
+                        {deal.priorityFirstAccess && (
+                          <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                            Premium
+                          </span>
+                        )}
+                      </td>
+
+                      <td className={`px-3 py-3 text-sm min-w-[100px] ${dimClass(deal)}`}>
+                        {FINANCING_LABELS[deal.financingType?.toLowerCase()] || deal.financingType || ''}
+                      </td>
+
+                      {/* ✅ STICKY STATUS CELL */}
+                      <td className={`px-3 py-3 min-w-[90px] sticky right-[60px] bg-white z-10 ${dimClass(deal)}`}>
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                          {deal.status}
+                        </span>
+                      </td>
+
+                      {/* ✅ STICKY ACTION CELL */}
+                      <td
+                        className={`px-3 py-3 text-center min-w-[60px] sticky right-0 bg-white ${openActionMenu === deal.id ? 'z-50' : 'z-20'}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="relative inline-block">
+
+
+                          <button
+                            ref={openActionMenu === deal.id ? actionBtnRef : undefined}
+                            className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-text-secondary hover:text-text-primary"
+                            onClick={(e) => toggleActionMenu(deal.id, e.currentTarget)}
+                            title="Actions"
+                          >
+                            <HiOutlineCog6Tooth className="w-5 h-5" />
+                          </button>
+                          {openActionMenu === deal.id && (
+                            <div
+                              ref={actionMenuRef}
+                              className={`absolute right-0 bg-white border border-border-subtle rounded-xl shadow-lg p-2 min-w-[170px]
 			${menuDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'}
 			`}
-			style={{ zIndex: 9999 }}
-			>
+                              style={{ zIndex: 9999 }}
+                            >
 
+                              <button
+                                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${deal.status === 'published' || deal.status === 'sold' ? 'text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50 text-text-primary'}`}
+                                onClick={() => { if (deal.status !== 'published' && deal.status !== 'sold') { openUnderwriting(deal); setOpenActionMenu(null); } }}
+                                disabled={deal.status === 'published' || deal.status === 'sold'}
+                              >Underwriting</button>
+                              <button
+                                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${deal.status === 'published' || deal.status === 'sold' ? 'text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50 text-text-primary'}`}
+                                onClick={() => { if (deal.status !== 'published' && deal.status !== 'sold') { handleEdit(deal); setOpenActionMenu(null); } }}
+                                disabled={deal.status === 'published' || deal.status === 'sold'}
+                              >Edit</button>
+                              {deal.status === 'pending' && user?.role === 'admin' && (
+                                <>
+                                  <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors" onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}>Approve</button>
+                                  <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-red-600 transition-colors" onClick={() => { handleReject(deal); setOpenActionMenu(null); }}>Reject</button>
+                                </>
+                              )}
+
+                              {deal.status === 'pending' && user?.role === 'team_member' && (
+                                <span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Review</span>
+                              )}
+
+                              {deal.status === 'rejected' && user?.role === 'admin' && (
+                                <>
+                                  <button
+                                    className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors"
+                                    onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}
+                                  >
+                                    Approve
+                                  </button>
+                                  <button
+                                    className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                                    onClick={() => { setSelectedDeal(deal); setShowDeleteModal(true); setOpenActionMenu(null); }}
+                                  >
+                                    Delete
+                                  </button>
+                                </>
+                              )}
+
+
+                              {deal.status === 'rejected' && user?.role === 'team_member' && (
+                                <span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Delete</span>
+                              )}
+                              {deal.status === 'approved' && user?.role === 'admin' && (
+                                <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handlePublish(deal.id); setOpenActionMenu(null); }}>Publish</button>
+                              )}
+                              {deal.status === 'approved' && user?.role === 'team_member' && (
+                                <span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Publish</span>
+                              )}
+                              {deal.status === 'published' && user?.role === 'admin' && (
+                                
+								   <button
+                                    className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors"
+                                    onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}
+                                  >
+                                    Approve
+                                  </button>
+								
+                              )}
+							  
+				{deal.status !== 'pending' && (user?.role === 'admin' || user?.role === 'team_member') && (
 			<button
-className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${deal.status === 'published' || deal.status === 'sold' ? 'text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50 text-text-primary'}`}
-onClick={() => { if (deal.status !== 'published' && deal.status !== 'sold') { openUnderwriting(deal); setOpenActionMenu(null); } }}
-disabled={deal.status === 'published' || deal.status === 'sold'}
->Underwriting</button>
-<button
-className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${deal.status === 'published' || deal.status === 'sold' ? 'text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50 text-text-primary'}`}
-onClick={() => { if (deal.status !== 'published' && deal.status !== 'sold') { handleEdit(deal); setOpenActionMenu(null); } }}
-disabled={deal.status === 'published' || deal.status === 'sold'}
->Edit</button>
-{deal.status === 'pending' && (
-<>
-<button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors" onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}>Approve</button>
-<button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-red-600 transition-colors" onClick={() => { handleReject(deal); setOpenActionMenu(null); }}>Reject</button>
-</>
-)}
+			className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-orange-600 transition-colors"
+			onClick={() => { handleMarkAsPending(deal.id); setOpenActionMenu(null); }}
+			>Mark as Pending</button>
+			)}
 
-{deal.status === 'rejected' && user?.role === 'admin' && (
-  <>
-    <button
-      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors"
-      onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}
-    >
-      Approve
-    </button>
-    <button
-      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-      onClick={() => { setSelectedDeal(deal); setShowDeleteModal(true); setOpenActionMenu(null); }}
-    >
-      Delete
-    </button>
-  </>
-)}
+			{deal.status === 'published' && (user?.role === 'admin' || user?.role === 'team_member') && (
+			<button
+			className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-emerald-50 text-emerald-700 transition-colors"
+			onClick={() => { handleMarkAsSold(deal.id); setOpenActionMenu(null); }}
+			>Mark Sold</button>
+			)}
+							  
+							  
+                              {deal.status === 'sold' && (user?.role === 'admin' || user?.role === 'team_member') && (
+                                <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handleRevertSold(deal.id); setOpenActionMenu(null); }}>Revert Sold</button>
+                              )}
 
 
-{deal.status === 'rejected' && user?.role === 'team_member' && (
-<span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Delete</span>
-)}
-{deal.status === 'approved' && user?.role === 'admin' && (
-<button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handlePublish(deal.id); setOpenActionMenu(null); }}>Publish</button>
-)}
-{deal.status === 'approved' && user?.role === 'team_member' && (
-<span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Publish</span>
-)}
-{deal.status === 'published' && user?.role === 'admin' && (
-<button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handleUnpublish(deal.id); setOpenActionMenu(null); }}>Unpublish</button>
-)}
-{deal.status === 'published' && (user?.role === 'admin' || user?.role === 'team_member') && (
-<button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-amber-50 text-amber-700 transition-colors" onClick={() => { handleMarkAsSold(deal.id); setOpenActionMenu(null); }}>Mark Sold</button>
-)}
-{deal.status === 'sold' && (user?.role === 'admin' || user?.role === 'team_member') && (
-<button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handleRevertSold(deal.id); setOpenActionMenu(null); }}>Revert Sold</button>
-)}
 
-		
-							
-							
-							
-							
-                          </div>
-                        )}
-                      </div>
-              </td>
 
-            </tr>
-          ))}
-        </tbody>
 
-      </table>
-    </div>
-  </div>
-)}
-		
-		
+
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+
+              </table>
+            </div>
+          </div>
+        )}
+
+
         <Pagination currentPage={dealPage} totalItems={filteredDeals.length} onPageChange={setDealPage} />
       </div>
 
       {/* Edit Modal */}
       {editingDeal && (
-        <Modal isOpen={!!editingDeal} onClose={() => setEditingDeal(null)} title="Edit Deal" size="xl">
+        <Modal isOpen={!!editingDeal} onClose={() => { setEditingDeal(null); setEditErrors({}); }} title="Edit Deal" size="xl">
           <div className="space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Full Name" value={editingDeal?.submitter?.name || editingDeal?.submitterName || ''} readOnly className="cursor-not-allowed bg-app" />
@@ -1163,7 +1253,7 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
               />
             </div>
 
-            <div className="bg-surface border border-border-subtle rounded-lg p-4 mb-4">
+            <div className="bg-surface border border-border-subtle rounded-lg p-4 mb-4" style={{ display: 'none' }}>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" checked={!!editingDeal.priorityFirstAccess} onChange={(e) => setEditingDeal((prev) => ({ ...prev, priorityFirstAccess: e.target.checked }))} className="mt-1 w-5 h-5 accent-accent" />
                 <div>
@@ -1173,15 +1263,6 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
               </label>
             </div>
 
-            <div className="bg-surface border border-border-subtle rounded-lg p-4 mb-4">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={!!editingDeal.fiftyFiftyPartner} onChange={(e) => setEditingDeal((prev) => ({ ...prev, fiftyFiftyPartner: e.target.checked }))} className="mt-1 w-5 h-5 accent-accent" />
-                <div>
-                  <div className="text-base font-semibold text-text-primary">50-50 Partnership Opportunity</div>
-                  <div className="text-sm text-text-secondary mt-0.5">Mark this property as a potential 50-50 partnership.</div>
-                </div>
-              </label>
-            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Street Address" value={editingDeal.streetAddress || ''} error={editErrors.streetAddress} ref={(el) => (editErrorRefs.current.streetAddress = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, streetAddress: e.target.value }))} />
@@ -1227,6 +1308,10 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Price" type="text" inputMode="numeric" value={formatNumber(editingDeal.price || '')} error={editErrors.price} ref={(el) => (editErrorRefs.current.price = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, price: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+              <label className="flex items-center gap-3 cursor-pointer mt-2">
+                <input type="checkbox" checked={!!editingDeal.discountPrice} onChange={(e) => setEditingDeal((prev) => ({ ...prev, discountPrice: e.target.checked }))} className="w-5 h-5 accent-accent" />
+                <span className="text-sm font-medium text-text-primary">Discount Price</span>
+              </label>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1329,7 +1414,7 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
 
       {/* Underwriting Modal */}
       {underwritingDeal && (
-        <Modal isOpen={!!underwritingDeal} onClose={() => setUnderwritingDeal(null)} title="Underwriting & Analysis" size="xl">
+        <Modal isOpen={!!underwritingDeal} onClose={() => { setUnderwritingDeal(null); setEditErrors({}); }} title="Underwriting & Analysis" size="xl">
           <div className="space-y-10 max-h-[80vh] overflow-y-auto">
             <div className="p-6 space-y-10">
               {/* Market Definition */}
@@ -1354,8 +1439,23 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
               {/* Market Occupancy */}
               <section className="space-y-6">
                 <h3 className="text-lg font-semibold text-text-primary">Estimated Occupancy</h3>
-                <div className="grid grid-cols-1 gap-4 max-w-xs">
-                  <NumericInput label="Occupancy (%)" value={underwritingDeal?.occupancyRate ?? ''} error={editErrors.occupancyRate} ref={(el) => (editErrorRefs.current.occupancyRate = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, occupancyRate: unformatNumber(e.target.value).replace(/[^0-9.]/g, '') }))} />
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Occupancy Rate</label>
+                    <div className="flex items-center gap-3">
+                      <input type="range" min={0} max={100} step={1} value={Number(underwritingDeal?.occupancyRate) || 0} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, occupancyRate: e.target.value }))} className="flex-1 accent-blue-600" ref={(el) => (editErrorRefs.current.occupancyRate = el)} />
+                      <span className="text-sm font-mono text-text-secondary w-12 text-right">{Number(underwritingDeal?.occupancyRate) || 0}%</span>
+                    </div>
+                    {editErrors.occupancyRate && <p className="text-xs text-red-500 mt-1">{editErrors.occupancyRate}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1">Average Night Rate</label>
+                    <div className="flex items-center gap-3">
+                      <input type="range" min={0} max={5000} step={10} value={Number(underwritingDeal?.averageNightRate) || 0} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, averageNightRate: e.target.value }))} className="flex-1 accent-blue-600" ref={(el) => (editErrorRefs.current.averageNightRate = el)} />
+                      <span className="text-sm font-mono text-text-secondary w-16 text-right">${Number(underwritingDeal?.averageNightRate) || 0}</span>
+                    </div>
+                    {editErrors.averageNightRate && <p className="text-xs text-red-500 mt-1">{editErrors.averageNightRate}</p>}
+                  </div>
                 </div>
               </section>
 
@@ -1363,9 +1463,16 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
               <section className="space-y-6">
                 <h3 className="text-lg font-semibold text-text-primary">Average Nightly Rate (ANR)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  {['budget', 'economy', 'midscale', 'upscale', 'luxury'].map((tier) => (
-                    <NumericInput key={tier} label={tier.charAt(0).toUpperCase() + tier.slice(1) + ' ($)'} value={formatNumber(underwritingDeal[`anr_${tier}`] || '')} error={editErrors[`anr_${tier}`]} ref={(el) => (editErrorRefs.current[`anr_${tier}`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`anr_${tier}`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-                  ))}
+                  {['budget', 'economy', 'midscale', 'upscale', 'luxury'].map((tier) => {
+                    const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+                    return (
+                      <div key={tier} className="border border-border-subtle rounded-lg p-3 space-y-2">
+                        <div className="text-xs font-semibold text-primary uppercase tracking-wide">{tierLabel}</div>
+                        <NumericInput label="ANR ($)" value={formatNumber(underwritingDeal[`anr_${tier}`] || '')} error={editErrors[`anr_${tier}`]} ref={(el) => (editErrorRefs.current[`anr_${tier}`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`anr_${tier}`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                        <NumericInput label="Occupancy Rate (%)" value={underwritingDeal[`occupancyRate_${tier}`] ?? ''} error={editErrors[`occupancyRate_${tier}`]} ref={(el) => (editErrorRefs.current[`occupancyRate_${tier}`] = el)} onChange={(e) => { let val = unformatNumber(e.target.value).replace(/[^0-9.]/g, ''); if (val !== '' && Number(val) > 100) val = '100'; if (val !== '' && Number(val) < 0) val = '0'; setUnderwritingDeal((prev) => ({ ...prev, [`occupancyRate_${tier}`]: val })); }} />
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
 
@@ -1385,38 +1492,197 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Input label="Purchase Price ($)" type="text" inputMode="numeric" value={formatNumber(underwritingDeal?.price || '')} disabled />
                   <NumericInput label="Cost Segregation (%)" value={underwritingDeal.costSegregationPercent || ''} error={editErrors.costSegregationPercent} ref={(el) => (editErrorRefs.current.costSegregationPercent = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, costSegregationPercent: unformatNumber(e.target.value).replace(/[^0-9.]/g, '') }))} />
-                 
-				<NumericInput
-  label="Income Reduction ($)"
-  value={formatNumber(underwritingDeal.incomeReduction || '')}
-  error={editErrors.incomeReduction}
-  ref={(el) => (editErrorRefs.current.incomeReduction = el)}
-  onChange={(e) =>
-    setUnderwritingDeal((prev) => ({
-      ...prev,
-      incomeReduction: unformatNumber(e.target.value).replace(/[^0-9]/g, ''),
-    }))
-  }
-/>
-				  
-                  <NumericInput label="Tax Rate (%)" value={underwritingDeal.effectiveTaxRate || ''} error={editErrors.effectiveTaxRate} ref={(el) => (editErrorRefs.current.effectiveTaxRate = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, effectiveTaxRate: unformatNumber(e.target.value).replace(/[^0-9.]/g, '') }))} />
-				  
-                {/* ✅ Tax Savings — validated on submit via validateDealForm (0 to $500,000) */}
-<NumericInput
-  label="Tax Savings ($)"
-  value={formatNumber(underwritingDeal.taxSavings || '')}
-  error={editErrors.taxSavings}
-  ref={(el) => (editErrorRefs.current.taxSavings = el)}
-  onChange={(e) =>
-    setUnderwritingDeal((prev) => ({
-      ...prev,
-      taxSavings: unformatNumber(e.target.value).replace(/[^0-9]/g, ''),
-    }))
-  }
-/>
 
-				  
-				  
+                  <NumericInput
+                    label="Income Reduction ($)"
+                    value={formatNumber(underwritingDeal.incomeReduction || '')}
+                    error={editErrors.incomeReduction}
+                    ref={(el) => (editErrorRefs.current.incomeReduction = el)}
+                    onChange={(e) =>
+                      setUnderwritingDeal((prev) => ({
+                        ...prev,
+                        incomeReduction: unformatNumber(e.target.value).replace(/[^0-9]/g, ''),
+                      }))
+                    }
+                  />
+
+                  <NumericInput label="Tax Rate (%)" value={underwritingDeal.effectiveTaxRate || ''} error={editErrors.effectiveTaxRate} ref={(el) => (editErrorRefs.current.effectiveTaxRate = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, effectiveTaxRate: unformatNumber(e.target.value).replace(/[^0-9.]/g, '') }))} />
+
+                  {/* ✅ Tax Savings — validated on submit via validateDealForm (0 to $500,000) */}
+                  <NumericInput
+                    label="Tax Savings ($)"
+                    value={formatNumber(underwritingDeal.taxSavings || '')}
+                    error={editErrors.taxSavings}
+                    ref={(el) => (editErrorRefs.current.taxSavings = el)}
+                    onChange={(e) =>
+                      setUnderwritingDeal((prev) => ({
+                        ...prev,
+                        taxSavings: unformatNumber(e.target.value).replace(/[^0-9]/g, ''),
+                      }))
+                    }
+                  />
+
+
+
+                </div>
+              </section>
+
+              {/* Estimated Expenses */}
+              <section className="space-y-0">
+                <div className="border border-border-subtle rounded-lg overflow-hidden">
+                  {/* Section Header */}
+                  <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-border-subtle">
+                    <span className="text-primary font-bold text-sm">$</span>
+                    <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">Estimated Expenses</h3>
+                  </div>
+
+                  <div className="p-4 space-y-6">
+                    {/* One-Time Fees */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">One-Time Fees</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <NumericInput
+                          label="Entry or Down Payment ($)"
+                          value={formatNumber(underwritingDeal.expenseEntryDownPayment || '')}
+                          error={editErrors.expenseEntryDownPayment}
+                          ref={(el) => (editErrorRefs.current.expenseEntryDownPayment = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseEntryDownPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Closing Costs ($)"
+                          value={formatNumber(underwritingDeal.expenseClosingCosts || '')}
+                          error={editErrors.expenseClosingCosts}
+                          ref={(el) => (editErrorRefs.current.expenseClosingCosts = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseClosingCosts: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Design/Furnishing/Setup/Renovations ($)"
+                          value={formatNumber(underwritingDeal.expenseDesignFurnishing || '')}
+                          error={editErrors.expenseDesignFurnishing}
+                          ref={(el) => (editErrorRefs.current.expenseDesignFurnishing = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseDesignFurnishing: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        {/* Total One-Time */}
+                        <div className="flex flex-col justify-end">
+                          <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+                            <div className="text-xs text-text-secondary font-medium mb-1">Total One-Time</div>
+                            <div className="text-base font-semibold text-primary">
+                              ${Number(
+                                (Number(underwritingDeal.expenseEntryDownPayment) || 0) +
+                                (Number(underwritingDeal.expenseClosingCosts) || 0) +
+                                (Number(underwritingDeal.expenseDesignFurnishing) || 0)
+                              ).toLocaleString('en-US')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Annual Fees and Expenses */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Annual Fees and Expenses</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <NumericInput
+                          label="Principal and Interest ($)"
+                          value={formatNumber(underwritingDeal.expensePrincipalInterest || '')}
+                          error={editErrors.expensePrincipalInterest}
+                          ref={(el) => (editErrorRefs.current.expensePrincipalInterest = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expensePrincipalInterest: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Property Taxes ($)"
+                          value={formatNumber(underwritingDeal.expensePropertyTaxes || '')}
+                          error={editErrors.expensePropertyTaxes}
+                          ref={(el) => (editErrorRefs.current.expensePropertyTaxes = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expensePropertyTaxes: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Insurance ($)"
+                          value={formatNumber(underwritingDeal.expenseInsurance || '')}
+                          error={editErrors.expenseInsurance}
+                          ref={(el) => (editErrorRefs.current.expenseInsurance = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseInsurance: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Management ($)"
+                          value={formatNumber(underwritingDeal.expenseManagement || '')}
+                          error={editErrors.expenseManagement}
+                          ref={(el) => (editErrorRefs.current.expenseManagement = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseManagement: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="OTA Fees — Airbnb, VRBO, etc. ($)"
+                          value={formatNumber(underwritingDeal.expenseOTAFees || '')}
+                          error={editErrors.expenseOTAFees}
+                          ref={(el) => (editErrorRefs.current.expenseOTAFees = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseOTAFees: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Cleaning ($)"
+                          value={formatNumber(underwritingDeal.expenseCleaning || '')}
+                          error={editErrors.expenseCleaning}
+                          ref={(el) => (editErrorRefs.current.expenseCleaning = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseCleaning: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Maintenance and Repairs ($)"
+                          value={formatNumber(underwritingDeal.expenseMaintenanceRepairs || '')}
+                          error={editErrors.expenseMaintenanceRepairs}
+                          ref={(el) => (editErrorRefs.current.expenseMaintenanceRepairs = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseMaintenanceRepairs: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="HOA Fees ($)"
+                          value={formatNumber(underwritingDeal.expenseHOAFees || '')}
+                          error={editErrors.expenseHOAFees}
+                          ref={(el) => (editErrorRefs.current.expenseHOAFees = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseHOAFees: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Sales Tax ($)"
+                          value={formatNumber(underwritingDeal.expenseSalesTax || '')}
+                          error={editErrors.expenseSalesTax}
+                          ref={(el) => (editErrorRefs.current.expenseSalesTax = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseSalesTax: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Advertising ($)"
+                          value={formatNumber(underwritingDeal.expenseAdvertising || '')}
+                          error={editErrors.expenseAdvertising}
+                          ref={(el) => (editErrorRefs.current.expenseAdvertising = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseAdvertising: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        <NumericInput
+                          label="Misc Expense ($)"
+                          value={formatNumber(underwritingDeal.expenseMisc || '')}
+                          error={editErrors.expenseMisc}
+                          ref={(el) => (editErrorRefs.current.expenseMisc = el)}
+                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseMisc: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                        />
+                        {/* Total Annual Expenses */}
+                        <div className="flex flex-col justify-end">
+                          <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+                            <div className="text-xs text-text-secondary font-medium mb-1">Total Annual Expenses</div>
+                            <div className="text-base font-semibold text-primary">
+                              ${Number(
+                                (Number(underwritingDeal.expensePrincipalInterest) || 0) +
+                                (Number(underwritingDeal.expensePropertyTaxes) || 0) +
+                                (Number(underwritingDeal.expenseInsurance) || 0) +
+                                (Number(underwritingDeal.expenseManagement) || 0) +
+                                (Number(underwritingDeal.expenseOTAFees) || 0) +
+                                (Number(underwritingDeal.expenseCleaning) || 0) +
+                                (Number(underwritingDeal.expenseMaintenanceRepairs) || 0) +
+                                (Number(underwritingDeal.expenseHOAFees) || 0) +
+                                (Number(underwritingDeal.expenseSalesTax) || 0) +
+                                (Number(underwritingDeal.expenseAdvertising) || 0) +
+                                (Number(underwritingDeal.expenseMisc) || 0)
+                              ).toLocaleString('en-US')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
 
@@ -1424,23 +1690,78 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
               <section className="space-y-6">
                 <h3 className="text-lg font-semibold text-text-primary">Market Analysis and Investment Analyzer Worksheet</h3>
                 <Input label="Worksheet / Analysis Link" type="url" value={underwritingDeal.marketAnalysisLink || ''} error={editErrors.marketAnalysisLink} ref={(el) => (editErrorRefs.current.marketAnalysisLink = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, marketAnalysisLink: e.target.value }))} />
+
+                {/* 50-50 Partnership Opportunity */}
+                <div className="bg-surface border border-border-subtle rounded-lg p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" checked={!!underwritingDeal.fiftyFiftyPartner} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, fiftyFiftyPartner: e.target.checked }))} className="mt-1 w-5 h-5 accent-accent" />
+                    <div>
+                      <div className="text-base font-semibold text-text-primary">50-50 Partnership Opportunity</div>
+                      <div className="text-sm text-text-secondary mt-0.5">Mark this property as a potential 50-50 partnership.</div>
+                    </div>
+                  </label>
+
+                  {underwritingDeal.fiftyFiftyPartner && (
+                    <div className="mt-4 ml-8 flex items-end gap-4">
+                      <div className="w-80">
+                        <label className="block text-sm font-medium text-text-secondary mb-1">
+                          Custom JV Values
+                        </label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={underwritingDeal.customJvValues || ''}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setUnderwritingDeal((prev) => ({ ...prev, customJvValues: val }));
+                          }}
+                          className="w-full px-3 py-2 bg-app border border-border-subtle rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                          placeholder="Enter JV value"
+                        />
+                      </div>
+
+                      <label className="flex items-center gap-2 cursor-pointer mb-1">
+                        <input
+                          type="checkbox"
+                          checked={!!underwritingDeal.costsIncluded}
+                          onChange={(e) =>
+                            setUnderwritingDeal((prev) => ({
+                              ...prev,
+                              costsIncluded: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 accent-accent"
+                        />
+                        <span className="text-sm text-text-primary whitespace-nowrap">
+                          Mark costs as "Included"
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
               </section>
 
               {/* Top Properties / Comps */}
               <section className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-text-primary">Top Properties (Comps)</h3>
+                  <h3 className="text-lg font-semibold text-text-primary">Top 10 Properties Listing (Airbnb)</h3>
                   <p className="text-sm text-text-secondary">The following are examples of the top properties in the area to show <span className="font-semibold">Potential Gross Revenue</span> if you could get this property to the top of the market.</p>
                   <p className="text-xs text-text-secondary italic">This DOES NOT suggest that this property in its current condition will produce this level of revenue.</p>
                 </div>
                 <div className="space-y-6">
-                  {[1, 2, 3, 4, 5, 6].map((num) => (
-                    <div key={num} className="space-y-4">
-                      <h4 className="font-medium text-text-primary">Property {num}</h4>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                    <div key={num} className="space-y-4 border border-border-subtle rounded-lg overflow-hidden">
+                      <h4 className="font-semibold text-white bg-primary px-4 py-2">Property {num}</h4>
+                      <div className="px-4 pb-4 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Input label="Property Title" value={underwritingDeal[`comp_${num}_title`] || ''} error={editErrors[`comp_${num}_title`]} ref={(el) => (editErrorRefs.current[`comp_${num}_title`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_title`]: e.target.value }))} />
+                        <Input label="Airbnb Listing Link" type="url" value={underwritingDeal[`comp_${num}_link`] || ''} error={editErrors[`comp_${num}_link`]} ref={(el) => (editErrorRefs.current[`comp_${num}_link`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_link`]: e.target.value }))} />
+                        <NumericInput label="Revenue ($)" value={formatNumber(underwritingDeal[`comp_${num}_grossRevenue`] || '')} error={editErrors[`comp_${num}_grossRevenue`]} ref={(el) => (editErrorRefs.current[`comp_${num}_revenue`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_grossRevenue`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input label="Property Link" type="url" value={underwritingDeal[`comp_${num}_link`] || ''} error={editErrors[`comp_${num}_link`]} ref={(el) => (editErrorRefs.current[`comp_${num}_link`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_link`]: e.target.value }))} />
-                        <Input label="Listing ID" value={underwritingDeal[`comp_${num}_id`] || ''} error={editErrors[`comp_${num}_id`]} ref={(el) => (editErrorRefs.current[`comp_${num}_id`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_id`]: e.target.value }))} />
-                        <NumericInput label="Gross Revenue ($)" value={formatNumber(underwritingDeal[`comp_${num}_grossRevenue`] || '')} error={editErrors[`comp_${num}_grossRevenue`]} ref={(el) => (editErrorRefs.current[`comp_${num}_grossRevenue`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_grossRevenue`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                        <NumericInput label="Occupancy (%)" value={underwritingDeal[`comp_${num}_occupancy`] || ''} error={editErrors[`comp_${num}_occupancy`]} ref={(el) => (editErrorRefs.current[`comp_${num}_occupancy`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_occupancy`]: e.target.value.replace(/[^0-9.]/g, '') }))} />
+                        <NumericInput label="Daily Rate ($)" value={formatNumber(underwritingDeal[`comp_${num}_dailyRate`] || '')} error={editErrors[`comp_${num}_dailyRate`]} ref={(el) => (editErrorRefs.current[`comp_${num}_dailyRate`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_dailyRate`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                      </div>
                       </div>
                     </div>
                   ))}
@@ -1488,17 +1809,14 @@ disabled={deal.status === 'published' || deal.status === 'sold'}
         })()}
       </Modal>
 
-
-
-
-      {/* Mark as Sold Confirm Modal Estimated Expenses */}
+      {/* Mark as Sold Confirm Modal */}
       <Modal isOpen={!!confirmSoldId} onClose={() => setConfirmSoldId(null)} title="Mark as Sold" size="sm">
         <div className="space-y-4">
           <p className="text-text-primary">Mark this property as sold?</p>
           <div className="bg-surface border border-border-subtle p-3 rounded text-sm space-y-1">
             <p className="font-medium text-text-primary">This will:</p>
             <ul className="list-disc list-inside space-y-1 text-text-secondary">
-              <li>Remove it from public listings</li>
+             
               <li>Prevent republishing</li>
               <li>Lock availability fields</li>
             </ul>

@@ -36,15 +36,24 @@ export function validateStep(step, formData) {
       // Location
       if (!formData.streetAddress?.trim()) {
         errors.streetAddress = 'Street address is required';
+      } else if (formData.streetAddress.trim().length > 200) {
+        errors.streetAddress = 'Street address must be under 200 characters';
+      }
+      if (formData.addressLine2 && formData.addressLine2.trim().length > 200) {
+        errors.addressLine2 = 'Address Line 2 must be under 200 characters';
       }
       if (!formData.city?.trim()) {
         errors.city = 'City is required';
+      } else if (formData.city.trim().length > 100) {
+        errors.city = 'City must be under 100 characters';
       }
       if (!formData.stateRegion?.trim()) {
         errors.stateRegion = 'State/Region is required';
       }
       if (!formData.postalCode?.trim()) {
         errors.postalCode = 'Postal code is required';
+      } else if (formData.postalCode.trim().length > 20) {
+        errors.postalCode = 'Postal code must be under 20 characters';
       }
       break;
     }

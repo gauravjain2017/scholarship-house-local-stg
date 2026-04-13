@@ -2,7 +2,7 @@ const formatNumber = (value) => {
   if (value === null || value === undefined || value === '') return '';
   const num = value.toString().replace(/,/g, '');
   if (isNaN(num)) return '';
-  return Number(num).toLocaleString();
+  return Number(num).toLocaleString('en-US');
 };
 
 const unformatNumber = (value) => {

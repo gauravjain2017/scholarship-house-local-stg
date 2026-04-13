@@ -42,9 +42,9 @@ const DEFAULT_FILTERS = [
 ];
 
 const formatValue = (value, format) => {
-  if (format === 'currency') return `$${Number(value).toLocaleString()}`;
+  if (format === 'currency') return `$${Number(value).toLocaleString('en-US')}`;
   if (format === 'percent') return `${value}%`;
-  return Number(value).toLocaleString();
+  return Number(value).toLocaleString('en-US');
 };
 
 const ManageFilters = () => {
@@ -143,15 +143,14 @@ const ManageFilters = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-primary">Manage Filters</h1>
-          <p className="text-text-secondary text-sm mt-1">
+           <p className="text-text-secondary text-sm mt-1 pr-3 md:pr-0">
             Control which filters are visible to users, and set the min/max range for each filter.
           </p>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
+           className="inline-flex items-center gap-2 md:px-5 md:py-2.5 px-2 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors md:w-auto w-[65%] text-center justify-center">
           {saving ? (
             <>
               <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -186,11 +185,11 @@ const ManageFilters = () => {
             </div>
 
             {/* Filter Rows */}
-            <div className="divide-y divide-gray-100">
+             <div className="divide-y divide-gray-100 overflow-x-auto md:overflow-x-visible">
               {sectionFilters.map((filter) => (
                 <div
                   key={filter.key}
-                  className={`px-5 py-4 flex items-center gap-4 transition-colors ${!filter.enabled ? 'bg-gray-50/50 opacity-60' : ''}`}
+                  className={`w-[600px] md:w-auto px-5 py-4 flex items-center gap-4 transition-colors ${!filter.enabled ? 'bg-gray-50/50 opacity-60' : ''}`}
                 >
                   {/* Toggle */}
                   <button
@@ -203,7 +202,7 @@ const ManageFilters = () => {
                   </button>
 
                   {/* Filter Name */}
-                  <div className="w-[240px] shrink-0">
+                  <div className="md:w-[270px] shrink-0">
                     <span className="text-sm font-medium text-gray-900">{filter.label}</span>
                     <span className="ml-2 text-xs text-gray-400 capitalize">({filter.type})</span>
                   </div>
@@ -215,8 +214,10 @@ const ManageFilters = () => {
                         <label className="text-xs text-gray-500 w-8">Min</label>
                         <input
                           type="number"
+                          min={0}
                           value={filter.min}
-                          onChange={(e) => updateFilterField(filter.key, 'min', Number(e.target.value))}
+                          onChange={(e) => updateFilterField(filter.key, 'min', filter.key === 'yearBuilt' ? parseInt(e.target.value, 10) || 0 : Math.max(0, Number(e.target.value)))}
+                          onKeyDown={(e) => { if (e.key === '-' || (filter.key === 'yearBuilt' && (e.key === '.' || e.key === 'e'))) e.preventDefault(); }}
                           disabled={!filter.enabled}
                           className="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
@@ -226,8 +227,10 @@ const ManageFilters = () => {
                         <label className="text-xs text-gray-500 w-8">Max</label>
                         <input
                           type="number"
+                          min={0}
                           value={filter.max}
-                          onChange={(e) => updateFilterField(filter.key, 'max', Number(e.target.value))}
+                          onChange={(e) => updateFilterField(filter.key, 'max', filter.key === 'yearBuilt' ? parseInt(e.target.value, 10) || 0 : Math.max(0, Number(e.target.value)))}
+                          onKeyDown={(e) => { if (e.key === '-' || (filter.key === 'yearBuilt' && (e.key === '.' || e.key === 'e'))) e.preventDefault(); }}
                           disabled={!filter.enabled}
                           className="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />
@@ -237,8 +240,10 @@ const ManageFilters = () => {
                         <label className="text-xs text-gray-500 w-7">Step</label>
                         <input
                           type="number"
+                          min={0}
                           value={filter.step}
-                          onChange={(e) => updateFilterField(filter.key, 'step', Number(e.target.value))}
+                          onChange={(e) => updateFilterField(filter.key, 'step', filter.key === 'yearBuilt' ? parseInt(e.target.value, 10) || 0 : Math.max(0, Number(e.target.value)))}
+                          onKeyDown={(e) => { if (e.key === '-' || (filter.key === 'yearBuilt' && (e.key === '.' || e.key === 'e'))) e.preventDefault(); }}
                           disabled={!filter.enabled}
                           className="w-28 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         />

@@ -5,6 +5,7 @@ const ImageCarousel = ({
   alt = 'Image',
   className = '',
   counterOnHover = false,
+  bottomLabel = null,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
@@ -112,26 +113,6 @@ const ImageCarousel = ({
             </>
           )}
 
-          {/* Dot Indicators */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
-            {validImages.map((_, index) => (
-              <button
-                key={index}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setCurrentIndex(index);
-                }}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === currentIndex
-                    ? 'bg-surface w-6'
-                    : 'bg-surface/50 hover:bg-surface/75'
-                }`}
-                aria-label={`Go to image ${index + 1}`}
-              />
-            ))}
-          </div>
-
           {/* Image Counter */}
           {counterOnHover === true && isHovered && (
             <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded z-10">
@@ -139,6 +120,46 @@ const ImageCarousel = ({
             </div>
           )}
         </>
+      )}
+
+      {/* Bottom center: type label with dots below */}
+      {(bottomLabel || validImages.length > 1) && (
+        <div className="absolute bottom-2 left-2 right-2 flex flex-col items-center gap-1 z-10">
+          {/* {bottomLabel && (
+            <span
+              className={`self-start bg-white/90 backdrop-blur-sm text-gray-800 font-semibold px-3 py-1.5 rounded-lg shadow max-w-full overflow-hidden text-ellipsis whitespace-nowrap ${
+                bottomLabel.length > 40
+                  ? 'text-[9px]'
+                  : bottomLabel.length > 25
+                    ? 'text-[10px]'
+                    : 'text-xs'
+              }`}
+              title={bottomLabel}
+            >
+              {bottomLabel}
+            </span>
+          )} */}
+          {validImages.length > 1 && (
+            <div className="flex space-x-1.5">
+              {validImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCurrentIndex(index);
+                  }}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    index === currentIndex
+                      ? 'bg-surface w-6'
+                      : 'bg-surface/50 hover:bg-surface/75'
+                  }`}
+                  aria-label={`Go to image ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
