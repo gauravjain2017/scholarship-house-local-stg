@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { notificationsAPI } from '../api/notifications';
 import { dealsAPI } from '../api/deals';
 import Loader from '../components/Loader';
-// testing
+// testing1234
 const NOTIFICATION_TYPE_LABELS = {
   new_registration: 'New Registration',
   new_property: 'New Property',
