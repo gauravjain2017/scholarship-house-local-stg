@@ -96,11 +96,11 @@ const fmt$ = (val) => {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const MetricPill = ({ label, value, highlight = false }) => (
-  <div className="flex flex-col bg-amber-50 border border-border-subtle rounded-lg px-3 py-2 min-w-0 interst-col">
+  <div className="flex flex-col bg-amber-50 border border-border-subtle rounded-lg px-3 py-2 min-w-0">
     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-900 mb-0.5 whitespace-nowrap rate">
       {label}
     </span>
-    <span className={`text-[13px] font-semibold whitespace-nowrap ${highlight ? 'text-blue-600' : 'text-gray-900'}`}>
+    <span className={`text-[14px] font-semibold whitespace-nowrap ${highlight ? 'text-blue-600' : 'text-gray-900'}`}>
       {value}
     </span>
   </div>
@@ -256,7 +256,7 @@ const DealCard = ({
       <div className="p-4 flex flex-col flex-1 gap-3">
 
         {/* Title */}
-        <h3 className="flex gap-1.5 font-semibold text-primary text-sm leading-snug md:min-h-[2.5rem] svg_width items-center icon-list">
+        <h3 className="flex gap-1.5 font-semibold text-primary text-sm leading-snug md:min-h-[2.5rem] svg_width items-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="w-3.5 h-3.5 shrink-0 mt-0.5"
@@ -353,7 +353,7 @@ const DealCard = ({
             <p className="text-sm font-bold text-sky-700 mb-1 p-3 border-b border-gray-300">
               Nightly Rate &amp; Revenue Tiers
             </p>
-            <div className="p-2 overflow-y-auto scroll_bar">
+            <div className="p-3 overflow-y-auto scroll_bar">
               <table className="w-full text-xs table_width tier-table">
                 <thead>
                   <tr className="text-[10px] font-semibold uppercase text-gray-900 tier-two">

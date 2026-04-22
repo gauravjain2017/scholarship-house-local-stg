@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
-import Navigation from '../components/Navigation';
 import {
   BlockPreviewContent,
   blockStyleToCSS,
   DEFAULT_BLOCK_STYLE,
 } from '../components/BlockRenderers';
 
-const ClientHomePage = () => {
+const SubmitterAboutPage = () => {
   const [blocks, setBlocks] = useState([]);
   const [globalCSS, setGlobalCSS] = useState('');
   const [loading, setLoading] = useState(true);
@@ -15,7 +14,7 @@ const ClientHomePage = () => {
   useEffect(() => {
     const fetchLayout = async () => {
       try {
-        const res = await api.get('/manage-homepages/public/client');
+        const res = await api.get('/manage-homepages/submitter_about');
         const { payload, global_css } = res.data.data;
         if (payload) {
           const parsed = typeof payload === 'string' ? JSON.parse(payload) : payload;
@@ -33,29 +32,23 @@ const ClientHomePage = () => {
 
   if (loading) {
     return (
-      <>
-        <div className="min-h-screen flex items-center justify-center bg-white">
-			<p className="text-gray-400 text-sm loader">
-			  <img src="/house.gif" alt="Loading..." width="150" /> </p>
-		  </div>
-      </>
+      <div className="min-h-screen flex items-center justify-center bg-white">
+		 <p className="text-gray-400 text-sm loader">
+         <img src="/house.gif" alt="Loading..." width="150" /> </p>
+      </div>
     );
   }
 
   if (blocks.length === 0) {
     return (
-      <>
-        <Navigation />
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <p className="text-gray-400 text-sm">No layout has been configured yet.</p>
-        </div>
-      </>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-400 text-sm">No layout has been configured yet.</p>
+      </div>
     );
   }
 
   return (
     <>
-      <Navigation />
       {globalCSS && <style>{globalCSS}</style>}
       <div className="min-h-screen bg-gray-50">
         {blocks
@@ -74,4 +67,4 @@ const ClientHomePage = () => {
   );
 };
 
-export default ClientHomePage;
+export default SubmitterAboutPage;

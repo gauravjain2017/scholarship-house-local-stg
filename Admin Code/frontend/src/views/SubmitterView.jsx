@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dealsAPI } from '../api/deals';
+import { draftsAPI } from '../api/drafts';
 import { submittersAPI } from '../api/submitters';
 import { disputesAPI } from '../api/disputes';
 import {
@@ -287,13 +288,163 @@ const SubmitterView = () => {
   // Use useRef to persist refs across renders
   const errorRefs = useRef({});
 
-  // Save form data to localStorage
+  // Build a draft payload from current form state. Unlike submit, draft
+  // allows partial/empty fields — we coerce numbers with numOrNull and
+  // pass strings through as-is. Media should already be normalized to URLs.
+  const buildDraftPayload = ({
+    interiorImages,
+    exteriorImages,
+    additionalImages,
+    videos,
+  }) => {
+    const submitterInfo = submitAsOther
+      ? {
+          fullName: formData.submitterFullName,
+          email: formData.submitterEmail,
+          phone: formData.submitterPhone,
+          userType: formData.submitterUserType,
+        }
+      : {
+          fullName: user?.name || '',
+          email: user?.email || '',
+          phone: user?.phone || '',
+          userType: user?.userType || '',
+        };
+
+    // Title for list display when user hasn't filled in an address yet
+    const derivedTitle =
+      [formData.bedrooms && `${formData.bedrooms} Bed`,
+       formData.bathrooms && `${formData.bathrooms} Bath`,
+       formData.city]
+        .filter(Boolean)
+        .join(', ') ||
+      formData.streetAddress ||
+      'Untitled Draft';
+
+    return {
+      // Submitter
+      submitterFullName: submitterInfo.fullName,
+      submitterEmail: submitterInfo.email,
+      submitterPhone: submitterInfo.phone,
+      submitterUserType: submitterInfo.userType,
+      submitterRelationship: formData.submitterRelationship || null,
+      allowUnregisteredSeller: submitUnregisteredSeller || null,
+      submittedByAdmin: submitAsOther,
+      submittedByAdminEmail: submitAsOther ? user?.email : null,
+
+      // Property
+      category: formData.category || null,
+      description: formData.description || '',
+      streetAddress: formData.streetAddress || '',
+      addressLine2: formData.addressLine2 || null,
+      city: formData.city || '',
+      stateRegion: formData.stateRegion || '',
+      postalCode: formData.postalCode || '',
+      bedrooms: numOrNull(formData.bedrooms),
+      bathrooms: numOrNull(formData.bathrooms),
+      squareFootage: numOrNull(formData.squareFootage),
+      yearBuilt: numOrNull(formData.yearBuilt),
+      expiry_date: toIsoDate(formData.expiry_date),
+
+      // Financial
+      price: numOrNull(formData.price),
+      expectedCloseDate: formData.expectedCloseDate || null,
+      financingType: formData.financingType || null,
+      emd: numOrNull(formData.emd),
+      downPayment: numOrNull(formData.downPayment),
+      financialInfo: formData.financialInfo || '',
+
+      // HOA
+      isHOA: !!formData.isHOA,
+      hoaMonthlyFee: formData.isHOA ? numOrNull(formData.hoaMonthlyFee) : null,
+
+      // Subject-to / seller financing
+      subjLoanBalance: numOrNull(formData.subjLoanBalance),
+      subjInterestRate: numOrNull(formData.subjInterestRate),
+      subjLoanMaturity: formData.subjLoanMaturity || null,
+      subjMonthlyPrincipal: numOrNull(formData.subjMonthlyPrincipal),
+      subjMonthlyInterest: numOrNull(formData.subjMonthlyInterest),
+      subjMonthlyTaxesInsurance: numOrNull(formData.subjMonthlyTaxesInsurance),
+      sellerLoanAmount: numOrNull(formData.sellerLoanAmount),
+      sellerInterestRate: numOrNull(formData.sellerInterestRate),
+      sellerLoanMaturity: formData.sellerLoanMaturity || null,
+      sellerMonthlyPayment: numOrNull(formData.sellerMonthlyPayment),
+      totalMonthlyPayment: numOrNull(formData.totalMonthlyPayment),
+
+      // STR
+      strZoning: formData.strZoning || null,
+      turnkeyFurnished: formData.turnkeyFurnished || null,
+      strConfidence: formData.strConfidence || null,
+      occupancyRate: numOrNull(formData.occupancyRate),
+      vacationRentalMarkets: formData.vacationRentalMarkets || [],
+      travelMotivations: formData.travelMotivations || [],
+      strListingLink: formData.strListingLink || '',
+      strDataSheetsLink: formData.strDataSheetsLink || '',
+
+      // Qualitative
+      guestDemandInsights: formData.guestDemandInsights || '',
+      valueAddOpportunities: formData.valueAddOpportunities || '',
+      localContacts: formData.localContacts || '',
+      amenities: formData.amenities || '',
+      localAttractions: formData.localAttractions || '',
+      specialTags: formData.specialTags || [],
+      autoTags: formData.autoTags || [],
+
+      // Media (already-uploaded URLs)
+      interiorImages,
+      exteriorImages,
+      additionalImages,
+      videos,
+
+      // Flags
+      priorityFirstAccess: formData.priorityFirstAccess,
+      fiftyFiftyPartner: formData.fiftyFiftyPartner,
+      turnkey: deriveTurnkey(formData.turnkeyFurnished),
+      doneForYou: formData.doneForYou,
+      additionalInfo: formData.additionalInfo || '',
+
+      // Wizard progress — so resume jumps to the right step
+      draftStep: currentStep,
+
+      // Display helper for drafts list
+      title: derivedTitle,
+    };
+  };
+
+  // Save draft to the backend (draft_properties table).
+  // Uploads any pending File objects first so the draft stores real URLs,
+  // then creates a new draft record or updates the existing one.
   const handleSave = async () => {
     if (isSaving || isSubmitting) return;
+
+    // Validate required fields on step 1 only before allowing draft save.
+    // Later steps can be saved as partial drafts without validation.
+    if (currentStep === 1) {
+      const { errors: stepErrors, firstErrorField } = validateStep(
+        currentStep,
+        formData
+      );
+      if (firstErrorField) {
+        setErrors(stepErrors);
+        showNotification(
+          'warning',
+          'Please fill in all required fields before saving your draft.',
+          'Required Fields'
+        );
+        const ref = errorRefs.current[firstErrorField];
+        if (ref) {
+          ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => ref.focus?.({ preventScroll: true }), 300);
+        }
+        return;
+      }
+    }
 
     setIsSaving(true);
 
     try {
+      // Normalize media: convert any File objects to uploaded URLs.
+      // normalizeMediaArray already handles the mix of File + URL entries.
       const [interiorImages, exteriorImages, additionalImages, videos] =
         await Promise.all([
           normalizeMediaArray(formData.interiorImages),
@@ -302,33 +453,121 @@ const SubmitterView = () => {
           normalizeMediaArray(formData.videos),
         ]);
 
-      const normalizedFormData = {
-        ...formData,
+      // Reflect uploaded URLs back into form state so the UI no longer
+      // holds raw File objects after save.
+      setFormData((prev) => ({
+        ...prev,
         interiorImages,
         exteriorImages,
         additionalImages,
         videos,
-      };
+      }));
 
-      // localStorage.setItem(
-      //   LOCAL_STORAGE_KEY,
-      //   JSON.stringify(normalizedFormData)
-      // );
+      const payload = buildDraftPayload({
+        interiorImages,
+        exteriorImages,
+        additionalImages,
+        videos,
+      });
 
-      setFormData(normalizedFormData);
+      let savedDraft;
+      if (currentDraftId) {
+        savedDraft = await draftsAPI.updateDraft(currentDraftId, payload);
+      } else {
+        savedDraft = await draftsAPI.createDraft(payload);
+        const newId = savedDraft?.id || savedDraft?.data?.id;
+        if (newId) setCurrentDraftId(newId);
+      }
+
+      // Refresh drafts list
+      queryClient.invalidateQueries(['myDrafts']);
+
+      // Clear stale localStorage backup — backend is now source of truth
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
 
       showNotification('success', 'Your draft has been saved.', 'Draft Saved');
     } catch (err) {
       console.error('Save failed:', err);
-      showNotification('error', 'Failed to save draft. Please try again.', 'Save Failed');
+      const message =
+        err?.response?.data?.error ||
+        err?.message ||
+        'Failed to save draft. Please try again.';
+      showNotification('error', message, 'Save Failed');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Resume a saved draft: load its data into the form and remember its id
+  // so subsequent saves update the same record.
+  const handleResumeDraft = (draft) => {
+    const restored = {
+      ...defaultFormData,
+      ...mapPropertyToFormData(draft),
+      // mapPropertyToFormData is tuned for `properties` records; make sure
+      // draft-specific fields flow through.
+      interiorImages: (draft.interiorImages || []).filter(
+        (v) => typeof v === 'string'
+      ),
+      exteriorImages: (draft.exteriorImages || []).filter(
+        (v) => typeof v === 'string'
+      ),
+      additionalImages: (draft.additionalImages || []).filter(
+        (v) => typeof v === 'string'
+      ),
+      videos: (draft.videos || []).filter((v) => typeof v === 'string'),
+    };
+    setFormData(restored);
+    setCurrentDraftId(draft.id);
+    setErrors({});
+    setResetKey((prev) => prev + 1);
+
+    // Jump to the step the user was on when they saved
+    const resumeStep =
+      draft.draftStep && draft.draftStep >= 1 && draft.draftStep <= TOTAL_STEPS
+        ? draft.draftStep
+        : 1;
+    setCurrentStep(resumeStep);
+    // Mark all earlier steps as completed so the user can navigate freely
+    setCompletedSteps(
+      Array.from({ length: resumeStep - 1 }, (_, i) => i + 1)
+    );
+    setIsSubmitted(false);
+    scrollToTop();
+    showNotification(
+      'success',
+      'Draft loaded. You can continue where you left off.',
+      'Draft Resumed'
+    );
+  };
+
+  // Delete a draft from the backend
+  const handleDeleteDraft = async (draftId) => {
+    try {
+      await draftsAPI.deleteDraft(draftId);
+      if (currentDraftId === draftId) setCurrentDraftId(null);
+      queryClient.invalidateQueries(['myDrafts']);
+      setConfirmDeleteDraft(null);
+      showNotification('success', 'Draft deleted.', 'Draft Deleted');
+    } catch (err) {
+      console.error('Delete draft failed:', err);
+      showNotification(
+        'error',
+        'Failed to delete draft. Please try again.',
+        'Delete Failed'
+      );
     }
   };
 
   const [submissionSearch, setSubmissionSearch] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Tracks the draft id the user is currently editing. Set when user resumes
+  // a saved draft or after the first Save Draft click, so subsequent saves
+  // update the same record rather than creating duplicates.
+  const [currentDraftId, setCurrentDraftId] = useState(null);
+  // Draft pending deletion confirmation
+  const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(null);
 
   // Notification modal state
   const [notification, setNotification] = useState({ open: false, type: 'success', title: '', message: '' });
@@ -368,6 +607,16 @@ const SubmitterView = () => {
     enabled: !!user?.email,
   });
 
+  // Fetch user's saved drafts from the draft_properties table
+  const {
+    data: myDrafts,
+    isLoading: loadingDrafts,
+  } = useQuery({
+    queryKey: ['myDrafts', user?.email],
+    queryFn: () => (user?.email ? draftsAPI.getMyDrafts(user.email) : []),
+    enabled: !!user?.email,
+  });
+
   // Refetch submission history after a new property is submitted
   // Track whether the form was successfully submitted (to show review instead of resetting)
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -379,13 +628,28 @@ const SubmitterView = () => {
     setCurrentStep(1);
     setCompletedSteps([]);
     setIsSubmitted(false);
+    // Clear any draft-edit tracking so this is a truly fresh submission
+    setCurrentDraftId(null);
   };
 
   const createDealMutation = useMutation({
     mutationFn: dealsAPI.createDeal,
-    onSuccess: () => {
+    onSuccess: async () => {
       refetchMyDeals();
       queryClient.invalidateQueries(['adminDeals']);
+
+      // If this submission was promoted from a saved draft, remove the draft
+      // record from the draft_properties table so it doesn't linger.
+      if (currentDraftId) {
+        try {
+          await draftsAPI.deleteDraft(currentDraftId);
+        } catch (err) {
+          // Non-fatal — the deal was created successfully; just log.
+          console.warn('Failed to delete draft after submission:', err);
+        }
+        queryClient.invalidateQueries(['myDrafts']);
+        setCurrentDraftId(null);
+      }
 
       setErrors({});
       setCurrentStep(6);
@@ -1465,16 +1729,15 @@ const SubmitterView = () => {
                 </span>
 
                 <div className="flex items-center gap-3 mt-4 md:mt-0 form_btn_width">
-                  {currentStep < 5 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleSave}
-                      disabled={isSaving || isSubmitting}
-                    >
-                      {isSaving ? 'Saving...' : 'Save Draft'}
-                    </Button>
-                  )}
+                  {/* Save Draft is available on every step (1-6) */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSave}
+                    disabled={isSaving || isSubmitting}
+                  >
+                    {isSaving ? 'Saving...' : 'Save Draft'}
+                  </Button>
 
                   {currentStep >= 5 ? (
                     <Button
@@ -1548,6 +1811,9 @@ const SubmitterView = () => {
                       setCurrentStep(1);
                       setCompletedSteps([]);
                       setConfirmCancel(false);
+                      // Reset draft-edit tracking. Cancel only clears the form;
+                      // the saved draft remains in My Drafts for later resume.
+                      setCurrentDraftId(null);
                     }}
                     className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
                   >
@@ -1557,6 +1823,132 @@ const SubmitterView = () => {
               </div>
             </Modal>
           </form>
+
+          {/* My Drafts */}
+          {!loadingDrafts && myDrafts && myDrafts.length > 0 && (
+            <div className="bg-surface border border-border-subtle rounded-xl shadow-sm p-8 mb-6">
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+                <h2 className="text-2xl font-semibold text-primary">
+                  My Drafts
+                </h2>
+                <span className="text-sm text-text-secondary">
+                  {myDrafts.length} draft
+                  {myDrafts.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {[...myDrafts]
+                  .sort((a, b) => {
+                    const dateA = new Date(a.updated_at || a.created_at || 0);
+                    const dateB = new Date(b.updated_at || b.created_at || 0);
+                    return dateB - dateA;
+                  })
+                  .map((draft) => {
+                    const isCurrentlyEditing = draft.id === currentDraftId;
+                    const draftTitle =
+                      draft.title ||
+                      draft.streetAddress ||
+                      (draft.city ? `Draft in ${draft.city}` : 'Untitled draft');
+                    const lastSaved = draft.updated_at || draft.created_at;
+                    return (
+                      <div
+                        key={draft.id}
+                        className={`border rounded-lg p-4 flex items-center justify-between gap-4 flex-wrap ${
+                          isCurrentlyEditing
+                            ? 'border-blue-400 bg-blue-50'
+                            : 'border-border-subtle bg-surface hover:bg-app'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-medium text-text-primary truncate">
+                              {draftTitle}
+                            </h3>
+                            {isCurrentlyEditing && (
+                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-blue-600 text-white">
+                                Editing now
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-text-secondary">
+                            {draft.draftStep
+                              ? `Step ${draft.draftStep} of ${TOTAL_STEPS}`
+                              : 'Incomplete'}
+                            {lastSaved && (
+                              <>
+                                {' · '}
+                                Last saved{' '}
+                                {new Date(lastSaved).toLocaleString()}
+                              </>
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                       
+                            <Button
+                              type="button"
+                              variant="primary"
+                              onClick={() => handleResumeDraft(draft)}
+                            >
+                              Resume
+                            </Button>
+                       
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setConfirmDeleteDraft(draft)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Delete Draft Confirmation Modal */}
+              <Modal
+                isOpen={!!confirmDeleteDraft}
+                onClose={() => setConfirmDeleteDraft(null)}
+                title="Delete Draft"
+                size="sm"
+              >
+                {confirmDeleteDraft && (
+                  <div className="space-y-4">
+                    <p className="text-text-secondary">
+                      Are you sure you want to delete this draft? This action
+                      cannot be undone.
+                    </p>
+                    <div className="bg-app border border-border-subtle p-3 rounded text-sm text-text-secondary">
+                      <strong>
+                        {confirmDeleteDraft.title ||
+                          confirmDeleteDraft.streetAddress ||
+                          'Untitled draft'}
+                      </strong>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <button
+                        onClick={() => setConfirmDeleteDraft(null)}
+                        className="px-4 py-2 rounded border border-border-subtle text-text-primary hover:bg-app"
+                      >
+                        Keep Draft
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDeleteDraft(confirmDeleteDraft.id)
+                        }
+                        className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                      >
+                        Delete Draft
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Modal>
+            </div>
+          )}
 
           {/* Previous Submissions */}
           <div className="bg-surface border border-border-subtle rounded-xl shadow-sm p-8">

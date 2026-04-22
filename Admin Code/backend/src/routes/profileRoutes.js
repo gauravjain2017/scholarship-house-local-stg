@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, validateSession } = require('../middleware/auth');
-const profileController = require('../Controllers/profileController');
+const profileController = require('../controllers/profileController');
 
 // Every route below requires a valid JWT + active session
 router.use(authenticateToken);

@@ -31,6 +31,7 @@ const disputeRoutes = require('./routes/disputeRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const manageHomepageRoutes = require('./routes/manageHomepageRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const draftRoutes = require('./routes/draftRoutes');
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
@@ -138,6 +139,7 @@ app.use('/api/disputes', disputeRoutes);
 app.use('/api/notifications', notificationRoutes); // non-admin, client-accessible
 app.use('/api/manage-homepages', manageHomepageRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/drafts', draftRoutes);
 
 
 // 404 handler

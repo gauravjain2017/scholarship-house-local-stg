@@ -1097,11 +1097,16 @@ const DealDetailView = ({
           )}
 
           {/* Top Properties (Comps) */}
-          {hasAnyValue(
-            deal.comp_1_link, deal.comp_2_link, deal.comp_3_link,
-            deal.comp_4_link, deal.comp_5_link, deal.comp_6_link,
-            deal.comp_7_link, deal.comp_8_link, deal.comp_9_link, deal.comp_10_link
-          ) && (
+          {(() => {
+            const compNums = Object.keys(deal)
+              .map((k) => {
+                const m = k.match(/^comp_(\d+)_(title|dailyRate|occupancy|link|grossRevenue)$/);
+                return m && deal[k] ? Number(m[1]) : null;
+              })
+              .filter((n) => n !== null);
+            const maxCompNum = compNums.length ? Math.max(...compNums) : 0;
+            return maxCompNum > 0;
+          })() && (
               <section className="mt-12 border-t border-slate-200 pt-10">
                 <div className="mb-6 space-y-1">
                   <div className="flex items-center gap-2">
@@ -1130,7 +1135,19 @@ const DealDetailView = ({
                       </tr>
                     </thead>
                     <tbody className="">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+                      {(() => {
+                        const nums = Array.from(
+                          new Set(
+                            Object.keys(deal)
+                              .map((k) => {
+                                const m = k.match(/^comp_(\d+)_(title|dailyRate|occupancy|link|grossRevenue)$/);
+                                return m ? Number(m[1]) : null;
+                              })
+                              .filter((n) => n !== null)
+                          )
+                        ).sort((a, b) => a - b);
+                        return nums;
+                      })().map((num) => {
                         const link = deal[`comp_${num}_link`];
                         const revenue = deal[`comp_${num}_grossRevenue`];
                         const title = deal[`comp_${num}_title`] || `Property ${num}`;

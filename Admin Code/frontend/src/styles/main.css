@@ -115,11 +115,16 @@ text-transform: capitalize !important;
 .tier-center td {
     text-align: center !important;
 }
-.tier-two th {
+.tier-center td {
     text-align: center !important;
+    font-size: 11px;
 }
+.tier-two th {
+    text-align: center;
+}
+
 .sidebarShown .tier-two {
-    font-size: 13px !important;
+    font-size: 10px !important;
 }
 
 .SidebarNotShow .tier-two {
@@ -133,7 +138,7 @@ text-transform: capitalize !important;
 	
 }
 .sidebarShown .rate {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: bold;
 }
 .income_boxes>:nth-child(2) {
@@ -151,12 +156,12 @@ text-transform: capitalize !important;
   background: #F9FAFB !important; /* white */
 }
 .tier-table-detail tbody tr:nth-child(odd) {
-   background: #ffffff !important; /* gray */
+	 background: #F9FAFB !important; /* white */
   
 }
 
 .tier-table-detail tbody tr:nth-child(even) {
- background: #F9FAFB !important; /* white */
+ background: #ffffff !important; /* gray */
 }
 
 .description-box {
@@ -183,23 +188,25 @@ text-transform: capitalize !important;
     border-radius: 10px;
 }
 
-/* Odd Boxes */
+/* 
 .str-main .str-box:nth-child(1),
 .str-main .str-box:nth-child(3),
 .str-main .str-box:nth-child(5) {
     background-color: #ECFDF5;
 }
 
-/* Even Boxes */
+
 .str-main .str-box:nth-child(2),
 .str-main .str-box:nth-child(4),
 .str-main .str-box:nth-child(6) {
     background-color: #FFFBEB;
 }
-
+*/
 .market-box {
     border-top-right-radius: 10px !important;
     border-top-left-radius: 10px !important;
+	background-color: #D4E9F8 !important;
+	color: #000 !important;
 }
 
 /* 
@@ -222,6 +229,32 @@ text-transform: capitalize !important;
 }
 */
 
+.icon-list {
+    display: flex !important;
+    align-items: start !important;
+}
+
+.revenue-tier a {
+    font-size: 12px !important;
+}
+
+.value-text, .assets {
+    font-size: 21px !important;
+}
+
+.row-bg th {
+    font-size: 12px;
+    color: #000 !important;
+}
+
+.ad-info {
+    border-left: 4px solid #fbbf24 !important;
+    padding-left: 30px;
+    border-radius: 10px !important;
+    padding-top: 18px !important;
+    padding-bottom: 18px !important;
+    background: #fdfbef !important;
+}
 
 @media screen and (max-width: 390px) {
 
@@ -251,6 +284,11 @@ text-transform: capitalize !important;
 .row-bg th {
     padding-left: 10px !important;
     padding-right: 10px !important;
+    font-size: 11px;
+}
+
+.revenue-tier a {
+    font-size: 11px !important;
 }
 
 .table_sec .revenue-hed {
@@ -270,7 +308,7 @@ text-transform: capitalize !important;
     gap: 10px !important;
 }
 .tier-two th {
-    font-size: 9px !important;
+    font-size: 10px !important;
 }
 .gr-box .text-right {
     text-align: left !important;
@@ -384,5 +422,10 @@ text-transform: capitalize !important;
 .total_row {
     padding-left: 13px !important;
     padding-right: 13px !important;
+}
+.next-steps {
+    flex-wrap: wrap;
+    justify-content: start !important;
+    row-gap: 15px;
 }
 }

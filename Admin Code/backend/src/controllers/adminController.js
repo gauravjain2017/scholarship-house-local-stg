@@ -205,8 +205,7 @@ const updateDeal = async (req, res) => {
       updateData.specialTags || existingDeal.specialTags
     );
 
-    await dealStorage.updateDeal(dealId, updateData);
-    const updatedDeal = await dealStorage.getDealById(dealId);
+    const updatedDeal = await dealStorage.updateDeal(dealId, updateData);
 
     res.json(updatedDeal);
   } catch (error) {

@@ -174,6 +174,81 @@ function getUserTypeLabel(type) {
   return map[type] || type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
 }
 
+const ACCORDION_ICONS = {
+  'User Information': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    </svg>
+  ),
+  'Property': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+    </svg>
+  ),
+  'Location': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+    </svg>
+  ),
+  'Financial': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  'Additional': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  'Rental Markets': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12.75 3.03v.568c0 .334.148.65.405.864l1.068.89c.442.369.535 1.01.216 1.49l-.51.766a2.25 2.25 0 01-1.161.886l-.143.048a1.107 1.107 0 00-.57 1.664c.369.555.169 1.307-.427 1.605L9 13.125l.423 1.059a.956.956 0 01-1.652.928l-.679-.906a1.125 1.125 0 00-1.906.172L4.5 15.75l-.612.153M12.75 3.031a9 9 0 00-8.862 12.872M12.75 3.031a9 9 0 016.69 14.036m0 0l-.177-.529A2.25 2.25 0 0017.128 15H16.5l-.324-.324a1.453 1.453 0 00-2.328.377l-.036.073a1.586 1.586 0 01-.982.816l-.99.282c-.55.157-.894.702-.8 1.267l.073.438c.08.474.49.821.97.821.846 0 1.598.542 1.865 1.345l.215.643m5.276-3.67a9.012 9.012 0 01-5.276 3.67" />
+    </svg>
+  ),
+  'Property Photos and Videos': (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21zm16.5-13.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+    </svg>
+  ),
+};
+
+const UNDERWRITING_ICON = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+  </svg>
+);
+
+const AccordionSection = ({ title, isOpen, onToggle, children }) => {
+  const icon = ACCORDION_ICONS[title] || UNDERWRITING_ICON;
+  return (
+    <div className={`rounded-xl overflow-hidden transition-all duration-200 border ${isOpen ? 'border-blue-200 shadow-sm' : 'border-border-subtle shadow-sm hover:shadow-md'}`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`w-full flex items-center gap-3 px-5 py-3.5 text-left transition-all duration-200 ${isOpen ? 'bg-blue-50 hover:bg-blue-100/70' : 'bg-white hover:bg-gray-50'}`}
+      >
+        <span className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors ${isOpen ? 'bg-white text-blue-600 ring-1 ring-blue-200' : 'bg-blue-50 text-blue-600'}`}>
+          {icon}
+        </span>
+        <span className="text-sm font-semibold truncate flex-1 text-text-primary">{title}</span>
+        <svg
+          className={`w-4 h-4 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-blue-500' : 'text-gray-400'}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div className="border-t border-blue-100 rounded-b-xl px-5 py-5 space-y-5 bg-white">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CheckboxGroup = ({ label, options, values = [], onChange }) => {
   const toggle = (value) => {
     onChange(values.includes(value) ? values.filter((v) => v !== value) : [...values, value]);
@@ -215,8 +290,34 @@ const PropertyManagement = () => {
   const lastSyncedHoaMonthlyRef = useRef(null);
   const lastSyncedCleaningSrcRef = useRef(null);
 
+  const [openAccordions, setOpenAccordions] = useState({
+    userInfo: true,
+    property: false,
+    location: false,
+    financial: false,
+    additional: false,
+    rentalMarkets: false,
+    photosVideos: false,
+    marketDefinition: false,
+    totalMarketRevenue: false,
+    anr: false,
+    egr: false,
+    costSegregation: false,
+    estimatedExpenses: false,
+    marketAnalysis: false,
+    top10Properties: false,
+    underwritingImages: false,
+  });
+  const toggleAccordion = (key) => setOpenAccordions((prev) => {
+    const isOpen = prev[key];
+    const allClosed = Object.fromEntries(Object.keys(prev).map((k) => [k, false]));
+    return { ...allClosed, [key]: !isOpen };
+  });
+  const expandAllAccordions = () => setOpenAccordions((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, true])));
+  const collapseAllAccordions = () => setOpenAccordions((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, false])));
+
   const [editingDeal, setEditingDeal] = useState(null);
-  const [underwritingDeal, setUnderwritingDeal] = useState(null);
+  const [topPropCount, setTopPropCount] = useState(1);
   const [selectedDeal, setSelectedDeal] = useState(null);
   const [dealPage, setDealPage] = useState(1);
 
@@ -358,62 +459,56 @@ const PropertyManagement = () => {
 
   // Auto-compute EGR = Occupancy % × ANR for each tier whenever inputs change
   useEffect(() => {
-    if (!underwritingDeal) return;
+    if (!editingDeal) return;
     const tiers = ['budget', 'economy', 'midscale', 'upscale', 'luxury'];
     const updates = {};
     let changed = false;
     tiers.forEach((tier) => {
-      const anr = Number(underwritingDeal[`anr_${tier}`]) || 0;
-      const occ = Number(underwritingDeal[`occupancyRate_${tier}`]) || 0;
+      const anr = Number(editingDeal[`anr_${tier}`]) || 0;
+      const occ = Number(editingDeal[`occupancyRate_${tier}`]) || 0;
       const daysOcc = (occ / 100) * 365;
       const raw = daysOcc * anr;
       let computedStr;
       if (!raw) computedStr = '';
       else if (raw < 1) computedStr = raw.toFixed(2);
       else computedStr = String(Math.round(raw));
-      const currentStr = String(underwritingDeal[`egr_${tier}`] ?? '');
+      const currentStr = String(editingDeal[`egr_${tier}`] ?? '');
       if (computedStr !== currentStr) {
         updates[`egr_${tier}`] = computedStr;
         changed = true;
       }
     });
-    if (changed) setUnderwritingDeal((prev) => ({ ...prev, ...updates }));
+    if (changed) setEditingDeal((prev) => ({ ...prev, ...updates }));
   }, [
-    underwritingDeal?.anr_budget, underwritingDeal?.occupancyRate_budget,
-    underwritingDeal?.anr_economy, underwritingDeal?.occupancyRate_economy,
-    underwritingDeal?.anr_midscale, underwritingDeal?.occupancyRate_midscale,
-    underwritingDeal?.anr_upscale, underwritingDeal?.occupancyRate_upscale,
-    underwritingDeal?.anr_luxury, underwritingDeal?.occupancyRate_luxury,
+    editingDeal?.anr_budget, editingDeal?.occupancyRate_budget,
+    editingDeal?.anr_economy, editingDeal?.occupancyRate_economy,
+    editingDeal?.anr_midscale, editingDeal?.occupancyRate_midscale,
+    editingDeal?.anr_upscale, editingDeal?.occupancyRate_upscale,
+    editingDeal?.anr_luxury, editingDeal?.occupancyRate_luxury,
   ]);
 
-  // Auto-compute comp Revenue = 365 × (Occupancy % / 100) × Daily Rate for each of the 10 properties
+  // Auto-compute comp Revenue = 365 × (Occupancy % / 100) × Daily Rate for each property
+  const compRatesKey = editingDeal
+    ? Array.from({ length: topPropCount }, (_, i) => i + 1)
+        .map((n) => `${editingDeal[`comp_${n}_occupancy`] ?? ''}|${editingDeal[`comp_${n}_dailyRate`] ?? ''}`)
+        .join(',')
+    : '';
   useEffect(() => {
-    if (!underwritingDeal) return;
+    if (!editingDeal) return;
     const updates = {};
     let changed = false;
-    for (let num = 1; num <= 10; num++) {
-      const occ = Number(underwritingDeal[`comp_${num}_occupancy`]) || 0;
-      const rate = Number(underwritingDeal[`comp_${num}_dailyRate`]) || 0;
+    for (let num = 1; num <= topPropCount; num++) {
+      const occ = Number(editingDeal[`comp_${num}_occupancy`]) || 0;
+      const rate = Number(editingDeal[`comp_${num}_dailyRate`]) || 0;
       const computed = Math.round(365 * (occ / 100) * rate);
-      const current = Number(underwritingDeal[`comp_${num}_grossRevenue`]) || 0;
+      const current = Number(editingDeal[`comp_${num}_grossRevenue`]) || 0;
       if (computed !== current) {
         updates[`comp_${num}_grossRevenue`] = computed ? String(computed) : '';
         changed = true;
       }
     }
-    if (changed) setUnderwritingDeal((prev) => ({ ...prev, ...updates }));
-  }, [
-    underwritingDeal?.comp_1_occupancy, underwritingDeal?.comp_1_dailyRate,
-    underwritingDeal?.comp_2_occupancy, underwritingDeal?.comp_2_dailyRate,
-    underwritingDeal?.comp_3_occupancy, underwritingDeal?.comp_3_dailyRate,
-    underwritingDeal?.comp_4_occupancy, underwritingDeal?.comp_4_dailyRate,
-    underwritingDeal?.comp_5_occupancy, underwritingDeal?.comp_5_dailyRate,
-    underwritingDeal?.comp_6_occupancy, underwritingDeal?.comp_6_dailyRate,
-    underwritingDeal?.comp_7_occupancy, underwritingDeal?.comp_7_dailyRate,
-    underwritingDeal?.comp_8_occupancy, underwritingDeal?.comp_8_dailyRate,
-    underwritingDeal?.comp_9_occupancy, underwritingDeal?.comp_9_dailyRate,
-    underwritingDeal?.comp_10_occupancy, underwritingDeal?.comp_10_dailyRate,
-  ]);
+    if (changed) setEditingDeal((prev) => ({ ...prev, ...updates }));
+  }, [compRatesKey, topPropCount]);
 
   // Auto-compute AGR (Assumed Gross Revenue) and derived expenses from Budget tier
   // AGR        = 365 × (Budget Occupancy Rate % / 100) × Budget ANR
@@ -421,65 +516,65 @@ const PropertyManagement = () => {
   // OTA Fees   = AGR × 15%
   // Management = AGR × 25%
   useEffect(() => {
-    if (!underwritingDeal) return;
-    const occ = Number(underwritingDeal.occupancyRate_budget) || 0;
-    const nightRate = Number(underwritingDeal.anr_budget) || 0;
+    if (!editingDeal) return;
+    const occ = Number(editingDeal.occupancyRate_budget) || 0;
+    const nightRate = Number(editingDeal.anr_budget) || 0;
     const agr = Math.round(365 * (occ / 100) * nightRate);
     const salesTax = Math.round(agr * 0.06);
     const otaFees = Math.round(agr * 0.15);
     const management = Math.round(agr * 0.25);
 
     const updates = {};
-    if (String(agr || '') !== String(underwritingDeal.agr || '')) {
+    if (String(agr || '') !== String(editingDeal.agr || '')) {
       updates.agr = agr ? String(agr) : '';
     }
-    if (String(salesTax || '') !== String(underwritingDeal.expenseSalesTax || '')) {
+    if (String(salesTax || '') !== String(editingDeal.expenseSalesTax || '')) {
       updates.expenseSalesTax = salesTax ? String(salesTax) : '';
     }
-    if (String(otaFees || '') !== String(underwritingDeal.expenseOTAFees || '')) {
+    if (String(otaFees || '') !== String(editingDeal.expenseOTAFees || '')) {
       updates.expenseOTAFees = otaFees ? String(otaFees) : '';
     }
-    if (String(management || '') !== String(underwritingDeal.expenseManagement || '')) {
+    if (String(management || '') !== String(editingDeal.expenseManagement || '')) {
       updates.expenseManagement = management ? String(management) : '';
     }
-    if (Object.keys(updates).length) setUnderwritingDeal((prev) => ({ ...prev, ...updates }));
-  }, [underwritingDeal?.occupancyRate_budget, underwritingDeal?.anr_budget]);
+    if (Object.keys(updates).length) setEditingDeal((prev) => ({ ...prev, ...updates }));
+  }, [editingDeal?.occupancyRate_budget, editingDeal?.anr_budget]);
 
   // Auto-compute Income Reduction and Tax Savings
   // Income Reduction = Cost Segregation % × Purchase Price  (or direct $ value when mode = 'value')
   // Tax Savings      = Income Reduction × Tax Rate
   useEffect(() => {
-    if (!underwritingDeal) return;
-    const mode = underwritingDeal.costSegregationMode || 'percent';
-    const price = Number(underwritingDeal.price) || 0;
-    const segPct = Number(underwritingDeal.costSegregationPercent) || 0;
-    const segVal = Number(underwritingDeal.costSegregationValue) || 0;
-    const taxRate = Number(underwritingDeal.effectiveTaxRate) || 0;
+    if (!editingDeal) return;
+    const mode = editingDeal.costSegregationMode || 'percent';
+    const price = Number(editingDeal.price) || 0;
+    const segPct = Number(editingDeal.costSegregationPercent) || 0;
+    const segVal = Number(editingDeal.costSegregationValue) || 0;
+    const taxRate = Number(editingDeal.effectiveTaxRate) || 0;
 
     const autoIncomeReduction = mode === 'value'
       ? Math.round(segVal)
       : Math.round((segPct / 100) * price);
     const effectiveIncomeReduction = incomeReductionManualRef.current
-      ? Number(underwritingDeal.incomeReduction) || 0
+      ? Number(editingDeal.incomeReduction) || 0
       : autoIncomeReduction;
     const taxSavings = Math.round(effectiveIncomeReduction * (taxRate / 100));
 
     const updates = {};
     if (!incomeReductionManualRef.current &&
-      String(autoIncomeReduction || '') !== String(underwritingDeal.incomeReduction || '')) {
+      String(autoIncomeReduction || '') !== String(editingDeal.incomeReduction || '')) {
       updates.incomeReduction = autoIncomeReduction ? String(autoIncomeReduction) : '';
     }
-    if (String(taxSavings || '') !== String(underwritingDeal.taxSavings || '')) {
+    if (String(taxSavings || '') !== String(editingDeal.taxSavings || '')) {
       updates.taxSavings = taxSavings ? String(taxSavings) : '';
     }
-    if (Object.keys(updates).length) setUnderwritingDeal((prev) => ({ ...prev, ...updates }));
+    if (Object.keys(updates).length) setEditingDeal((prev) => ({ ...prev, ...updates }));
   }, [
-    underwritingDeal?.costSegregationMode,
-    underwritingDeal?.costSegregationPercent,
-    underwritingDeal?.costSegregationValue,
-    underwritingDeal?.effectiveTaxRate,
-    underwritingDeal?.price,
-    underwritingDeal?.incomeReduction,
+    editingDeal?.costSegregationMode,
+    editingDeal?.costSegregationPercent,
+    editingDeal?.costSegregationValue,
+    editingDeal?.effectiveTaxRate,
+    editingDeal?.price,
+    editingDeal?.incomeReduction,
   ]);
 
   // Each derived expense auto-populates from its source inputs but stays manually
@@ -489,74 +584,73 @@ const PropertyManagement = () => {
 
   // Closing Costs = 3% of price (Traditional) or 1% (all other financing types)
   useEffect(() => {
-    if (!underwritingDeal) return;
-    const price = Number(underwritingDeal.price) || 0;
-    const financingType = underwritingDeal.financingType || '';
+    if (!editingDeal) return;
+    const price = Number(editingDeal.price) || 0;
+    const financingType = editingDeal.financingType || '';
     const prev = lastSyncedClosingCostsSrcRef.current;
     if (prev && prev.price === price && prev.financingType === financingType) return;
     lastSyncedClosingCostsSrcRef.current = { price, financingType };
     const rate = financingType === 'traditional' ? 0.03 : 0.01;
     const computed = Math.round(price * rate);
-    setUnderwritingDeal((p) => ({
+    setEditingDeal((p) => ({
       ...p,
       expenseClosingCosts: computed ? String(computed) : '',
     }));
-  }, [underwritingDeal?.price, underwritingDeal?.financingType]);
+  }, [editingDeal?.price, editingDeal?.financingType]);
 
   // Design / Renovation = Square Footage × $45
   useEffect(() => {
-    if (!underwritingDeal) return;
-    const sqft = Number(underwritingDeal.squareFootage) || 0;
+    if (!editingDeal) return;
+    const sqft = Number(editingDeal.squareFootage) || 0;
     if (lastSyncedSquareFootageRef.current === sqft) return;
     lastSyncedSquareFootageRef.current = sqft;
     const computed = Math.round(sqft * 45);
-    setUnderwritingDeal((p) => ({
+    setEditingDeal((p) => ({
       ...p,
       expenseDesignFurnishing: computed ? String(computed) : '',
     }));
-  }, [underwritingDeal?.squareFootage]);
+  }, [editingDeal?.squareFootage]);
 
   // Principal & Interest = Total Monthly Payment × 12
   useEffect(() => {
-    if (!underwritingDeal) return;
-    const monthlyPayment = Number(underwritingDeal.totalMonthlyPayment) || 0;
-    console.log('monthlyPayment : ',monthlyPayment)
+    if (!editingDeal) return;
+    const monthlyPayment = Number(editingDeal.totalMonthlyPayment) || 0;
     if (lastSyncedMonthlyPaymentRef.current === monthlyPayment) return;
     lastSyncedMonthlyPaymentRef.current = monthlyPayment;
     const computed = Math.round(monthlyPayment * 12);
-    setUnderwritingDeal((p) => ({
+    setEditingDeal((p) => ({
       ...p,
       expensePrincipalInterest: computed ? String(computed) : '',
     }));
-  }, [underwritingDeal?.totalMonthlyPayment]);
+  }, [editingDeal?.totalMonthlyPayment]);
 
   // HOA Fees (Annual) = HOA Monthly Fee × 12
   useEffect(() => {
-    if (!underwritingDeal) return;
-    const hoaMonthly = Number(underwritingDeal.hoaMonthlyFee) || 0;
+    if (!editingDeal) return;
+    const hoaMonthly = Number(editingDeal.hoaMonthlyFee) || 0;
     if (lastSyncedHoaMonthlyRef.current === hoaMonthly) return;
     lastSyncedHoaMonthlyRef.current = hoaMonthly;
     const computed = Math.round(hoaMonthly * 12);
-    setUnderwritingDeal((p) => ({
+    setEditingDeal((p) => ({
       ...p,
       expenseHOAFees: computed ? String(computed) : '',
     }));
-  }, [underwritingDeal?.hoaMonthlyFee]);
+  }, [editingDeal?.hoaMonthlyFee]);
 
   // Cleaning Fee = ANR × ((365 × Occupancy%) / 3)
   useEffect(() => {
-    if (!underwritingDeal) return;
-    const anr = Number(underwritingDeal.anr_budget) || 0;
-    const occ = Number(underwritingDeal.occupancyRate_budget) || 0;
+    if (!editingDeal) return;
+    const anr = Number(editingDeal.anr_budget) || 0;
+    const occ = Number(editingDeal.occupancyRate_budget) || 0;
     const srcKey = `${anr}|${occ}`;
     if (lastSyncedCleaningSrcRef.current === srcKey) return;
     lastSyncedCleaningSrcRef.current = srcKey;
     const computed = Math.round(anr * ((365 * (occ / 100)) / 3));
-    setUnderwritingDeal((p) => ({
+    setEditingDeal((p) => ({
       ...p,
       expenseCleaning: computed ? String(computed) : '',
     }));
-  }, [underwritingDeal?.anr_budget, underwritingDeal?.occupancyRate_budget]);
+  }, [editingDeal?.anr_budget, editingDeal?.occupancyRate_budget]);
 
   // Mutations
   const resolveDisputeMutation = useMutation({
@@ -770,80 +864,71 @@ const PropertyManagement = () => {
   };
 
 
-  const handleEdit = async (deal) => {
-    // console.log('Edit Deal : ',deal)
+  const openManageProperty = async (deal) => {
     setEditErrors({});
     let nextDeal = { ...deal };
     const email = deal.submitterEmail || deal.email || null;
 
-    if (!email) {
-      setEditingDeal({
-        ...nextDeal,
-        vacationRentalMarkets: Array.isArray(nextDeal.vacationRentalMarkets) ? nextDeal.vacationRentalMarkets : [],
-        expiry_date: nextDeal.expiry_date,
-      });
-      return;
+    if (email) {
+      try {
+        const res = await api.get(`/submitters/by-email/${encodeURIComponent(email)}`);
+        nextDeal.submitter = res.data;
+      } catch (err) {
+        console.error('Submitter fetch failed:', err);
+      }
     }
 
-    try {
-      const res = await api.get(`/submitters/by-email/${encodeURIComponent(email)}`);
-      nextDeal.submitter = res.data;
-    } catch (err) {
-      console.error('Submitter fetch failed:', err);
-    }
+    nextDeal.vacationRentalMarkets = Array.isArray(nextDeal.vacationRentalMarkets) ? nextDeal.vacationRentalMarkets : [];
+    nextDeal.expiry_date = nextDeal.expiry_date;
 
-    setEditingDeal({
-      ...nextDeal,
-      vacationRentalMarkets: Array.isArray(nextDeal.vacationRentalMarkets) ? nextDeal.vacationRentalMarkets : [],
-      expiry_date: nextDeal.expiry_date,
-    });
-  };
-
-  const openUnderwriting = (deal) => {
-    setEditErrors({});
-    // Treat an existing incomeReduction as a manual override if it doesn't match the auto-computed value.
-    const price = Number(deal?.price) || 0;
-    const segPct = Number(deal?.costSegregationPercent) || 0;
+    // Underwriting seeding logic
+    const price = Number(nextDeal?.price) || 0;
+    const segPct = Number(nextDeal?.costSegregationPercent) || 0;
     const auto = Math.round((segPct / 100) * price);
-    const existing = Number(deal?.incomeReduction) || 0;
+    const existing = Number(nextDeal?.incomeReduction) || 0;
     incomeReductionManualRef.current = existing > 0 && existing !== auto;
 
-    // Derived expenses auto-populate from their source inputs but remain
-    // manually editable. On open: fill empty derived fields from the formula;
-    // keep any saved value (treat as a user override). The sync effects then
-    // only re-run when a source input changes.
-    const financingType = deal?.financingType || '';
-    const sqft = Number(deal?.squareFootage) || 0;
-    const monthlyPayment = Number(deal?.totalMonthlyPayment) || 0;
-    const hoaMonthly = Number(deal?.hoaMonthlyFee) || 0;
-    const anrBudget = Number(deal?.anr_budget) || 0;
-    const occBudget = Number(deal?.occupancyRate_budget) || 0;
+    const financingType = nextDeal?.financingType || '';
+    const sqft = Number(nextDeal?.squareFootage) || 0;
+    const monthlyPayment = Number(nextDeal?.totalMonthlyPayment) || 0;
+    const hoaMonthly = Number(nextDeal?.hoaMonthlyFee) || 0;
+    const anrBudget = Number(nextDeal?.anr_budget) || 0;
+    const occBudget = Number(nextDeal?.occupancyRate_budget) || 0;
     const closingRate = financingType === 'traditional' ? 0.03 : 0.01;
 
-    const seeded = { ...deal };
     const seedIfEmpty = (field, computed) => {
-      if (!seeded[field] && computed) seeded[field] = String(computed);
+      if (!nextDeal[field] && computed) nextDeal[field] = String(computed);
     };
-    // Always recompute closing costs from the current financingType so a saved
-    // value from a prior type (e.g. 3% under Traditional) doesn't persist after
-    // the type is changed to Hybrid/Creative (1%).
     const computedClosing = Math.round(price * closingRate);
-    seeded.expenseClosingCosts = computedClosing ? String(computedClosing) : '';
+    nextDeal.expenseClosingCosts = computedClosing ? String(computedClosing) : '';
     seedIfEmpty('expenseDesignFurnishing', Math.round(sqft * 45));
     const computedPI = Math.round(monthlyPayment * 12);
-    seeded.expensePrincipalInterest = computedPI ? String(computedPI) : '';
+    nextDeal.expensePrincipalInterest = computedPI ? String(computedPI) : '';
     seedIfEmpty('expenseHOAFees', Math.round(hoaMonthly * 12));
     seedIfEmpty('expenseCleaning', Math.round(anrBudget * ((365 * (occBudget / 100)) / 3)));
 
-    // Prime sync refs to the current source values so the seeded (or saved)
-    // values aren't overwritten until a source input actually changes.
     lastSyncedClosingCostsSrcRef.current = { price, financingType };
     lastSyncedSquareFootageRef.current = sqft;
     lastSyncedMonthlyPaymentRef.current = monthlyPayment;
     lastSyncedHoaMonthlyRef.current = hoaMonthly;
     lastSyncedCleaningSrcRef.current = `${anrBudget}|${occBudget}`;
 
-    setUnderwritingDeal(seeded);
+    setOpenAccordions((prev) => {
+      const allClosed = Object.fromEntries(Object.keys(prev).map((k) => [k, false]));
+      return { ...allClosed, userInfo: true };
+    });
+
+    let initialTopPropCount = 1;
+    Object.keys(nextDeal).forEach((key) => {
+      const match = key.match(/^comp_(\d+)_(title|dailyRate|occupancy|link|grossRevenue)$/);
+      if (match && nextDeal[key]) {
+        const idx = Number(match[1]);
+        if (idx > initialTopPropCount) initialTopPropCount = idx;
+      }
+    });
+    setTopPropCount(initialTopPropCount);
+
+    setEditingDeal(nextDeal);
   };
 
 
@@ -857,7 +942,7 @@ const PropertyManagement = () => {
   };
 
   const validateUnderwriting = () => {
-    const normalized = normalizeUnderwritingForSave(underwritingDeal);
+    const normalized = normalizeUnderwritingForSave(editingDeal);
     const { errors, firstErrorField } = validateDealForm(normalized, {
       requireMedia: false,
       requireRequiredFields: false,
@@ -906,20 +991,56 @@ const PropertyManagement = () => {
     return normalized;
   };
 
-  const saveEdit = async () => {
-    const { firstErrorField, errors } = validateAdminEdit();
-    if (firstErrorField) {
-      const errorMessages = Object.entries(errors).slice(0, 5).map(([field, msg]) => `${fieldToLabel(field)}: ${msg}`).join('\n• ');
-      const extraCount = Object.keys(errors).length - 5;
+  const saveManageProperty = async () => {
+    // Validate edit fields
+    const editResult = validateAdminEdit();
+    if (editResult.firstErrorField) {
+      const errorMessages = Object.entries(editResult.errors).slice(0, 5).map(([field, msg]) => `${fieldToLabel(field)}: ${msg}`).join('\n• ');
+      const extraCount = Object.keys(editResult.errors).length - 5;
       const suffix = extraCount > 0 ? `\n...and ${extraCount} more` : '';
       showNotification('warning', `• ${errorMessages}${suffix}`, 'Validation Error');
-      const ref = editErrorRefs.current[firstErrorField];
+      const ref = editErrorRefs.current[editResult.firstErrorField];
       ref?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       ref?.focus?.();
       return;
     }
 
+    // Validate underwriting fields
+    const uwResult = validateUnderwriting();
+    if (uwResult.firstErrorField) {
+      const errorMessages = Object.entries(uwResult.errors).slice(0, 5).map(([field, msg]) => `${fieldToLabel(field)}: ${msg}`).join('\n• ');
+      const extraCount = Object.keys(uwResult.errors).length - 5;
+      const suffix = extraCount > 0 ? `\n...and ${extraCount} more` : '';
+      showNotification('warning', `• ${errorMessages}${suffix}`, 'Validation Error');
+      const ref = editErrorRefs.current[uwResult.firstErrorField];
+      ref?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => ref?.focus?.({ preventScroll: true }), 300);
+      return;
+    }
+
     const { id, status, submittedAt, publishedAt, submitter, submitterEmail, ...editable } = editingDeal;
+
+    // Underwriting expense totals
+    const totalOneTime = (
+      (Number(editable.expenseEntryDownPayment) || 0) +
+      (Number(editable.expenseClosingCosts) || 0) +
+      (Number(editable.expenseDesignFurnishing) || 0)
+    );
+
+    const totalAnnualExpenses = (
+      (Number(editable.expensePrincipalInterest) || 0) +
+      (Number(editable.expensePropertyTaxes) || 0) +
+      (Number(editable.expenseInsurance) || 0) +
+      (Number(editable.expenseManagement) || 0) +
+      (Number(editable.expenseOTAFees) || 0) +
+      (Number(editable.expenseCleaning) || 0) +
+      (Number(editable.expenseMaintenanceRepairs) || 0) +
+      (Number(editable.expenseUtilities) || 0) +
+      (Number(editable.expenseHOAFees) || 0) +
+      (Number(editable.expenseSalesTax) || 0) +
+      (Number(editable.expenseAdvertising) || 0) +
+      (Number(editable.expenseMisc) || 0)
+    );
 
     const normalizedUpdates = normalizeForSave({
       ...editable,
@@ -928,57 +1049,22 @@ const PropertyManagement = () => {
       exteriorImages: await normalizeMediaArray(editable.exteriorImages),
       additionalImages: await normalizeMediaArray(editable.additionalImages),
       videos: await normalizeMediaArray(editable.videos),
+      underwritingImages: await normalizeMediaArray(editable.underwritingImages || []),
+      expenseTotalOneTime: totalOneTime,
+      expenseTotalAnnual: totalAnnualExpenses,
     });
 
     updateMutation.mutate({ dealId: id, updates: normalizedUpdates });
   };
 
-  const saveUnderwriting = async () => {
-    const { firstErrorField, errors } = validateUnderwriting();
-    if (firstErrorField) {
-      const errorMessages = Object.entries(errors).slice(0, 5).map(([field, msg]) => `${fieldToLabel(field)}: ${msg}`).join('\n• ');
-      const extraCount = Object.keys(errors).length - 5;
-      const suffix = extraCount > 0 ? `\n...and ${extraCount} more` : '';
-      showNotification('warning', `• ${errorMessages}${suffix}`, 'Validation Error');
-      const ref = editErrorRefs.current[firstErrorField];
-      ref?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => ref?.focus?.({ preventScroll: true }), 300);
-      return;
-    }
-
-    const totalOneTime = (
-      (Number(underwritingDeal.expenseEntryDownPayment) || 0) +
-      (Number(underwritingDeal.expenseClosingCosts) || 0) +
-      (Number(underwritingDeal.expenseDesignFurnishing) || 0)
-    );
-
-    const totalAnnualExpenses = (
-      (Number(underwritingDeal.expensePrincipalInterest) || 0) +
-      (Number(underwritingDeal.expensePropertyTaxes) || 0) +
-      (Number(underwritingDeal.expenseInsurance) || 0) +
-      (Number(underwritingDeal.expenseManagement) || 0) +
-      (Number(underwritingDeal.expenseOTAFees) || 0) +
-      (Number(underwritingDeal.expenseCleaning) || 0) +
-      (Number(underwritingDeal.expenseMaintenanceRepairs) || 0) +
-      (Number(underwritingDeal.expenseUtilities) || 0) +
-      (Number(underwritingDeal.expenseHOAFees) || 0) +
-      (Number(underwritingDeal.expenseSalesTax) || 0) +
-      (Number(underwritingDeal.expenseAdvertising) || 0) +
-      (Number(underwritingDeal.expenseMisc) || 0)
-    );
-
-    const normalized = normalizeUnderwritingForSave({
-      ...underwritingDeal,
-      expenseTotalOneTime: totalOneTime,
-      expenseTotalAnnual: totalAnnualExpenses,
-      underwritingImages: await normalizeMediaArray(underwritingDeal.underwritingImages || []),
-    });
-    const { id, ...updates } = normalized;
-
-    updateMutation.mutate(
-      { dealId: id, updates },
-      { onSuccess: () => setUnderwritingDeal(null) }
-    );
+  // Compute display Property ID from street address + postal code
+  const getPropertyId = (deal) => {
+    const streetNum = (deal.streetAddress || '').trim().split(' ')[0].replace(/\D/g, '');
+    const postal = (deal.postalCode || '').trim();
+    if (!streetNum && !postal) return '';
+    if (!streetNum) return postal;
+    if (!postal) return streetNum;
+    return `${streetNum}-${postal}`;
   };
 
   // Sort/filter deals
@@ -988,6 +1074,9 @@ const PropertyManagement = () => {
 
   filteredDeals = filteredDeals.slice().sort((a, b) => {
     const dir = sortDirection === 'asc' ? 1 : -1;
+    if (sortField === 'id') {
+      return getPropertyId(a).localeCompare(getPropertyId(b)) * dir;
+    }
     if (dateFields.includes(sortField)) {
       const dA = new Date(a[sortField]), dB = new Date(b[sortField]);
       const vA = !isNaN(dA.getTime()), vB = !isNaN(dB.getTime());
@@ -1335,6 +1424,7 @@ const PropertyManagement = () => {
                 {/* HEADER */}
                 <thead className="bg-surface border-b">
                   <tr>
+                    <SortableHeader label="Property Id" field="id" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[120px]" />
                     <SortableHeader label="Submitted" field="submittedAt" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[100px]" />
                     <SortableHeader label="Title" field="title" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[180px] max-w-[260px]" />
                     <SortableHeader label="Full Address" field="streetAddress" sortField={sortField} sortDirection={sortDirection} onSort={handleSort} className="min-w-[200px]" />
@@ -1371,6 +1461,10 @@ const PropertyManagement = () => {
                       className="hover:bg-app cursor-pointer"
                       onClick={() => navigate(`/deal-details/${deal.id}`, { state: { from: '/admin/properties' } })}
                     >
+
+                      <td className={`px-3 py-3 text-sm text-text-secondary min-w-[120px] ${dimClass(deal)}`}>
+                        {getPropertyId(deal) || '—'}
+                      </td>
 
                       <td className={`px-3 py-3 text-sm text-text-secondary min-w-[100px] ${dimClass(deal)}`}>
                         {deal.submittedAt ? new Date(deal.submittedAt).toLocaleDateString() : '—'}
@@ -1437,102 +1531,97 @@ const PropertyManagement = () => {
                             Reactivate
                           </button>
                         ) : (
-                        <div className="relative inline-block">
+                          <div className="relative inline-block">
 
 
-                          <button
-                            ref={openActionMenu === deal.id ? actionBtnRef : undefined}
-                            className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-text-secondary hover:text-text-primary"
-                            onClick={(e) => toggleActionMenu(deal.id, e.currentTarget)}
-                            title="Actions"
-                          >
-                            <HiOutlineCog6Tooth className="w-5 h-5" />
-                          </button>
-                          {openActionMenu === deal.id && (
-                            <div
-                              ref={actionMenuRef}
-                              className={`absolute right-0 bg-white border border-border-subtle rounded-xl shadow-lg p-2 min-w-[170px]
-			${menuDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'}
-			`}
-                              style={{ zIndex: 9999 }}
+                            <button
+                              ref={openActionMenu === deal.id ? actionBtnRef : undefined}
+                              className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-text-secondary hover:text-text-primary"
+                              onClick={(e) => toggleActionMenu(deal.id, e.currentTarget)}
+                              title="Actions"
                             >
+                              <HiOutlineCog6Tooth className="w-5 h-5" />
+                            </button>
+                            {openActionMenu === deal.id && (
+                              <div
+                                ref={actionMenuRef}
+                                className={`absolute right-0 bg-white border border-border-subtle rounded-xl shadow-lg p-2 min-w-[170px]
+                                ${menuDirection === 'down' ? 'top-full mt-2' : 'bottom-full mb-2'}
+                                `}
+                                style={{ zIndex: 9999 }}
+                              >
 
-                              <button
-                                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${deal.status === 'published' || deal.status === 'sold' ? 'text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50 text-text-primary'}`}
-                                onClick={() => { if (deal.status !== 'published' && deal.status !== 'sold') { openUnderwriting(deal); setOpenActionMenu(null); } }}
-                                disabled={deal.status === 'published' || deal.status === 'sold'}
-                              >Underwriting</button>
-                              <button
-                                className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${deal.status === 'published' || deal.status === 'sold' ? 'text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50 text-text-primary'}`}
-                                onClick={() => { if (deal.status !== 'published' && deal.status !== 'sold') { handleEdit(deal); setOpenActionMenu(null); } }}
-                                disabled={deal.status === 'published' || deal.status === 'sold'}
-                              >Edit</button>
-                              {deal.status === 'pending' && (
-                                <>
-                                  <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors" onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}>Approve</button>
-                                  <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-red-600 transition-colors" onClick={() => { handleReject(deal); setOpenActionMenu(null); }}>Reject</button>
-                                </>
-                              )}
+                                <button
+                                  className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-colors ${deal.status === 'published' || deal.status === 'sold' ? 'text-gray-400 cursor-not-allowed' : 'hover:bg-gray-50 text-text-primary'}`}
+                                  onClick={() => { if (deal.status !== 'published' && deal.status !== 'sold') { openManageProperty(deal); setOpenActionMenu(null); } }}
+                                  disabled={deal.status === 'published' || deal.status === 'sold'}
+                                >Manage Property</button>
+                                {deal.status === 'pending' && (
+                                  <>
+                                    <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors" onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}>Approve</button>
+                                    <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-red-600 transition-colors" onClick={() => { handleReject(deal); setOpenActionMenu(null); }}>Reject</button>
+                                  </>
+                                )}
 
-                              {deal.status === 'rejected' && user?.role === 'admin' && (
-                                <>
+                                {deal.status === 'rejected' && user?.role === 'admin' && (
+                                  <>
+                                    <button
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors"
+                                      onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-red-600 transition-colors"
+                                      onClick={() => { setSelectedDeal(deal); setShowDeleteModal(true); setOpenActionMenu(null); }}
+                                    >
+                                      Delete
+                                    </button>
+                                  </>
+                                )}
+
+
+                                {deal.status === 'rejected' && user?.role === 'team_member' && (
+                                  <span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Delete</span>
+                                )}
+                                {deal.status === 'approved' && user?.role === 'admin' && (
+                                  <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handlePublish(deal.id); setOpenActionMenu(null); }}>Publish</button>
+                                )}
+                                {deal.status === 'approved' && user?.role === 'team_member' && (
+                                  <span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Publish</span>
+                                )}
+                                {deal.status === 'published' && user?.role === 'admin' && (
                                   <button
                                     className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors"
                                     onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}
                                   >
                                     Approve
                                   </button>
+                                )}
+
+                                {deal.status !== 'pending' && (user?.role === 'admin' || user?.role === 'team_member') && (
                                   <button
-                                    className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-red-600 transition-colors"
-                                    onClick={() => { setSelectedDeal(deal); setShowDeleteModal(true); setOpenActionMenu(null); }}
-                                  >
-                                    Delete
-                                  </button>
-                                </>
-                              )}
+                                    className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-orange-600 transition-colors"
+                                    onClick={() => { handleMarkAsPending(deal.id); setOpenActionMenu(null); }}
+                                  >Mark as Pending</button>
+                                )}
 
 
-                              {deal.status === 'rejected' && user?.role === 'team_member' && (
-                                <span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Delete</span>
-                              )}
-                              {deal.status === 'approved' && user?.role === 'admin' && (
-                                <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handlePublish(deal.id); setOpenActionMenu(null); }}>Publish</button>
-                              )}
-                              {deal.status === 'approved' && user?.role === 'team_member' && (
-                                <span className="block px-3 py-2 text-sm text-gray-400">Awaiting Admin Publish</span>
-                              )}
-                              {deal.status === 'published' && user?.role === 'admin' && (
-                                <button
-                                  className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-green-50 text-green-700 transition-colors"
-                                  onClick={() => { handleApprove(deal.id); setOpenActionMenu(null); }}
-                                >
-                                  Approve
-                                </button>
-                              )}
-
-                              {deal.status !== 'pending' && (user?.role === 'admin' || user?.role === 'team_member') && (
-                                <button
-                                  className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-red-50 text-orange-600 transition-colors"
-                                  onClick={() => { handleMarkAsPending(deal.id); setOpenActionMenu(null); }}
-                                >Mark as Pending</button>
-                              )}
-
-
-                              {deal.status === 'published' && (user?.role === 'admin' || user?.role === 'team_member') && (
-                                <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-amber-50 text-amber-700 transition-colors" onClick={() => { handleMarkAsSold(deal.id); setOpenActionMenu(null); }}>Mark Sold</button>
-                              )}
-                              {deal.status === 'sold' && (user?.role === 'admin' || user?.role === 'team_member') && (
-                                <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handleRevertSold(deal.id); setOpenActionMenu(null); }}>Revert Sold</button>
-                              )}
+                                {deal.status === 'published' && (user?.role === 'admin' || user?.role === 'team_member') && (
+                                  <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-amber-50 text-amber-700 transition-colors" onClick={() => { handleMarkAsSold(deal.id); setOpenActionMenu(null); }}>Mark Sold</button>
+                                )}
+                                {deal.status === 'sold' && (user?.role === 'admin' || user?.role === 'team_member') && (
+                                  <button className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-blue-50 text-blue-700 transition-colors" onClick={() => { handleRevertSold(deal.id); setOpenActionMenu(null); }}>Revert Sold</button>
+                                )}
 
 
 
 
 
 
-                            </div>
-                          )}
-                        </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </td>
 
@@ -1549,291 +1638,309 @@ const PropertyManagement = () => {
         <Pagination currentPage={dealPage} totalItems={filteredDeals.length} onPageChange={setDealPage} />
       </div>
 
-      {/* Edit Modal */}
+      {/* Manage Property Modal */}
       {editingDeal && (
-        <Modal isOpen={!!editingDeal} onClose={() => { setEditingDeal(null); setEditErrors({}); }} title="Edit Deal" size="xl">
-          <div className="space-y-4 max-h-[80vh] overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Full Name" value={editingDeal?.submitter?.name || editingDeal?.submitterName || ''} readOnly className="cursor-not-allowed bg-app" />
-              <Input label="Email" value={editingDeal?.submitter?.email || editingDeal?.submitterEmail || ''} readOnly className="cursor-not-allowed bg-app" />
-              <Input label="Phone" value={formatPhoneDisplay(editingDeal?.submitter?.phone || editingDeal?.submitterPhone || '')} readOnly className="cursor-not-allowed bg-app" />
-              <Input label="User Type" value={getUserTypeLabel(editingDeal?.submitter?.userType || editingDeal?.submitterUserType) || ''} readOnly className="cursor-not-allowed bg-app" />
-              <Select
-                label="Submitter Relationship"
-                value={editingDeal.submitterRelationship || ''}
-                onChange={(e) => setEditingDeal((prev) => ({ ...prev, submitterRelationship: e.target.value }))}
-                options={[
-                  { value: 'TEAM_MEMBER', label: 'Team Member' },
-                  { value: 'REALTOR_LISTING_OWNER', label: 'Realtor – Listing Owner' },
-                  { value: 'REALTOR_NOT_LISTING_OWNER', label: 'Realtor – Not Listing Owner' },
-                  { value: 'WHOLESALER_HOLDS_CONTRACT', label: 'Wholesaler – Holds Contract' },
-                  { value: 'WHOLESALER_NO_CONTRACT', label: 'Wholesaler – No Contract' },
-                  { value: 'REAL_ESTATE_PROFESSIONAL', label: 'Real Estate Professional' },
-                  { value: 'BIRDDOGGER', label: 'Bird Dogger' },
-                ]}
-              />
-            </div>
-
-            <div className="bg-surface border border-border-subtle rounded-lg p-4 mb-4" style={{ display: 'none' }}>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={!!editingDeal.priorityFirstAccess} onChange={(e) => setEditingDeal((prev) => ({ ...prev, priorityFirstAccess: e.target.checked }))} className="mt-1 w-5 h-5 accent-accent" />
-                <div>
-                  <div className="text-base font-semibold text-text-primary">Premium First Access</div>
-                  <div className="text-sm text-text-secondary mt-0.5">Give this property early visibility to VIP users before public release.</div>
+        <Modal isOpen={!!editingDeal} onClose={() => { setEditingDeal(null); setEditErrors({}); }} title="Manage Property" size="xl">
+          <div className="-mx-6 -my-6 flex flex-col max-h-[calc(100vh-10rem)] rounded-b-lg overflow-hidden">
+            {/* Property context header */}
+            <div className="px-6 py-3 bg-gradient-to-r from-blue-50 to-blue-50/40 border-b border-blue-100 flex items-center justify-between gap-4 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="text-sm font-semibold text-text-primary truncate max-w-full">{editingDeal.title || 'Untitled Property'}</div>
+                  {editingDeal.status && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap ${editingDeal.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                      editingDeal.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
+                        editingDeal.status === 'published' ? 'bg-blue-100 text-blue-700' :
+                          editingDeal.status === 'sold' ? 'bg-gray-200 text-gray-700' :
+                            editingDeal.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                      }`}>
+                      {editingDeal.status}
+                    </span>
+                  )}
                 </div>
-              </label>
-            </div>
-
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Street Address" value={editingDeal.streetAddress || ''} error={editErrors.streetAddress} ref={(el) => (editErrorRefs.current.streetAddress = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, streetAddress: e.target.value }))} />
-              <Input label="Address Line 2" value={editingDeal.addressLine2 || ''} onChange={(e) => setEditingDeal((prev) => ({ ...prev, addressLine2: e.target.value }))} />
-              <Input label="City" value={editingDeal.city || ''} error={editErrors.city} ref={(el) => (editErrorRefs.current.city = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, city: e.target.value }))} />
-              <Input label="State/Region/Province" value={editingDeal.stateRegion || ''} error={editErrors.stateRegion} ref={(el) => (editErrorRefs.current.stateRegion = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, stateRegion: e.target.value }))} />
-              <Input label="Postal/Zip Code" value={editingDeal.postalCode || ''} error={editErrors.postalCode} ref={(el) => (editErrorRefs.current.postalCode = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, postalCode: e.target.value }))} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select label="Category" value={editingDeal.category || ''} error={editErrors.category} ref={(el) => (editErrorRefs.current.category = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, category: e.target.value }))} options={CATEGORIES.filter((opt) => opt.value !== 'All')} />
-              <Select
-                label="Turnkey/Furnished"
-                value={editingDeal.turnkeyFurnished || ''}
-                error={editErrors.turnkeyFurnished}
-                ref={(el) => (editErrorRefs.current.turnkeyFurnished = el)}
-                onChange={(e) => setEditingDeal((prev) => ({ ...prev, turnkeyFurnished: e.target.value }))}
-                options={[
-                  { value: 'TURNKEY_OPERATING', label: 'Turnkey and Currently Operating As a Short-Term Rental.' },
-                  { value: 'FURNISHED_NOT_OPERATING', label: 'Fully Furnished but not Currently Operating As a Short-Term Rental.' },
-                  { value: 'PARTIALLY_FURNISHED', label: 'Partially Furnished but not Currently Operating As a Short-Term Rental.' },
-                  { value: 'NOT_FURNISHED', label: 'Not Furnished or Currently Operating as a Short-Term Rental.' },
-                ]}
-              />
-              <Input label="Bedrooms" type="text" inputMode="numeric" value={formatNumber(editingDeal.bedrooms || '')} error={editErrors.bedrooms} ref={(el) => (editErrorRefs.current.bedrooms = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, bedrooms: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Bathrooms" type="text" inputMode="numeric" value={formatNumber(editingDeal.bathrooms || '')} error={editErrors.bathrooms} ref={(el) => (editErrorRefs.current.bathrooms = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, bathrooms: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Year Built" type="text" inputMode="numeric" value={editingDeal.yearBuilt || ''} error={editErrors.yearBuilt} ref={(el) => (editErrorRefs.current.yearBuilt = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, yearBuilt: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Square Footage" type="text" inputMode="numeric" value={formatNumber(editingDeal.squareFootage || '')} error={editErrors.squareFootage} ref={(el) => (editErrorRefs.current.squareFootage = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, squareFootage: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <DateInput
-                label="Property Expiration Date"
-                name="expiry_date"
-                value={editingDeal.expiry_date ?? ''}
-                error={editErrors.expiry_date}
-                ref={(el) => (editErrorRefs.current.expiry_date = el)}
-                onChange={(e) => setEditingDeal((prev) => ({ ...prev, expiry_date: e.target.value }))}
-                placeholder="Select date"
-              />
-            </div>
-
-
-            <Input label="Title" value={editingDeal.title || ''} readOnly className="bg-app cursor-not-allowed" />
-            <Textarea label="Description" value={editingDeal.description || ''} error={editErrors.description} ref={(el) => (editErrorRefs.current.description = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, description: e.target.value }))} />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select
-                label="HOA"
-                value={editingDeal.isHOA ? 'YES' : 'NO'}
-                onChange={(e) => { const isHOA = e.target.value === 'YES'; setEditingDeal((prev) => ({ ...prev, isHOA, hoaMonthlyFee: isHOA ? prev.hoaMonthlyFee : null })); }}
-                options={[{ value: 'NO', label: 'No' }, { value: 'YES', label: 'Yes' }]}
-              />
-              <Input label="HOA Monthly Fee" type="text" inputMode="numeric" value={formatNumber(editingDeal.hoaMonthlyFee || '')} error={editErrors.hoaMonthlyFee} ref={(el) => (editErrorRefs.current.hoaMonthlyFee = el)} disabled={!editingDeal.isHOA} className={!editingDeal.isHOA ? 'bg-app cursor-not-allowed' : ''} placeholder={editingDeal.isHOA ? '' : 'N/A'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, hoaMonthlyFee: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Price" type="text" inputMode="numeric" value={formatNumber(editingDeal.price || '')} error={editErrors.price} ref={(el) => (editErrorRefs.current.price = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, price: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <label className="flex items-center gap-3 cursor-pointer mt-2">
-                <input type="checkbox" checked={!!editingDeal.discountPrice} onChange={(e) => setEditingDeal((prev) => ({ ...prev, discountPrice: e.target.checked }))} className="w-5 h-5 accent-accent" />
-                <span className="text-sm font-medium text-text-primary">Discount Price</span>
-              </label>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select label="Financing Type" value={editingDeal.financingType || ''} error={editErrors.financingType} ref={(el) => (editErrorRefs.current.financingType = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, financingType: e.target.value }))} options={[{ value: 'traditional', label: 'Traditional' }, { value: 'subject-to', label: 'Subject-To' }, { value: 'hybrid', label: 'Hybrid' }, { value: 'seller', label: 'Seller Financing' }, { value: 'cash', label: 'Cash' }]} />
-              <Input label="EMD" type="text" inputMode="numeric" value={formatNumber(editingDeal.emd || '')} error={editErrors.emd} ref={(el) => (editErrorRefs.current.emd = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, emd: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Down Payment" type="text" inputMode="numeric" value={formatNumber(editingDeal.downPayment || '')} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, downPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <DateInput label="Expected Close of Escrow" name="expectedCloseDate" value={editingDeal.expectedCloseDate ?? ''} error={editErrors.expectedCloseDate} ref={(el) => (editErrorRefs.current.expectedCloseDate = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, expectedCloseDate: e.target.value }))} placeholder="Select date" />
-            </div>
-
-            <Textarea label="Additional Financial Information" value={editingDeal.financialInfo || ''} error={editErrors.financialInfo} ref={(el) => (editErrorRefs.current.financialInfo = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, financialInfo: e.target.value }))} />
-
-            {/* Subject-to Loan Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Subject-to Loan Balance" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjLoanBalance || '')} error={editErrors.subjLoanBalance} ref={(el) => (editErrorRefs.current.subjLoanBalance = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjLoanBalance: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Subject-to Interest Rate" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjInterestRate || '')} error={editErrors.subjInterestRate} ref={(el) => (editErrorRefs.current.subjInterestRate = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjInterestRate: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <DateInput label="Subject-to Loan Maturity" name="subjLoanMaturity" value={editingDeal.subjLoanMaturity ?? ''} error={editErrors.subjLoanMaturity} ref={(el) => (editErrorRefs.current.subjLoanMaturity = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjLoanMaturity: e.target.value }))} placeholder="Select date" />
-              <Input label="Subject-to Monthly Principal" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjMonthlyPrincipal || '')} error={editErrors.subjMonthlyPrincipal} ref={(el) => (editErrorRefs.current.subjMonthlyPrincipal = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjMonthlyPrincipal: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Subject-to Monthly Interest" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjMonthlyInterest || '')} error={editErrors.subjMonthlyInterest} ref={(el) => (editErrorRefs.current.subjMonthlyInterest = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjMonthlyInterest: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Subject-to Monthly Taxes & Insurance" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjMonthlyTaxesInsurance || '')} error={editErrors.subjMonthlyTaxesInsurance} ref={(el) => (editErrorRefs.current.subjMonthlyTaxesInsurance = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjMonthlyTaxesInsurance: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-            </div>
-
-            {/* Seller Financing Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Seller Loan Amount" type="text" inputMode="numeric" value={formatNumber(editingDeal.sellerLoanAmount || '')} error={editErrors.sellerLoanAmount} ref={(el) => (editErrorRefs.current.sellerLoanAmount = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, sellerLoanAmount: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Seller Interest Rate" type="text" inputMode="numeric" value={formatNumber(editingDeal.sellerInterestRate || '')} error={editErrors.sellerInterestRate} ref={(el) => (editErrorRefs.current.sellerInterestRate = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, sellerInterestRate: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <DateInput label="Seller Loan Maturity" name="sellerLoanMaturity" value={editingDeal.sellerLoanMaturity ?? ''} error={editErrors.sellerLoanMaturity} ref={(el) => (editErrorRefs.current.sellerLoanMaturity = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, sellerLoanMaturity: e.target.value }))} placeholder="Select date" />
-              <Input label="Seller Monthly Payment" type="text" inputMode="numeric" value={formatNumber(editingDeal.sellerMonthlyPayment || '')} error={editErrors.sellerMonthlyPayment} ref={(el) => (editErrorRefs.current.sellerMonthlyPayment = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, sellerMonthlyPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-              <Input label="Total Monthly Payment" type="text" inputMode="numeric" value={formatNumber(editingDeal.totalMonthlyPayment || '')} error={editErrors.totalMonthlyPayment} ref={(el) => (editErrorRefs.current.totalMonthlyPayment = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, totalMonthlyPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-            </div>
-
-            {/* STR Data */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Select label="STR Zoning" value={editingDeal.strZoning || ''} error={editErrors.strZoning} ref={(el) => (editErrorRefs.current.strZoning = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, strZoning: e.target.value }))} options={[{ value: 'YES', label: 'Yes' }, { value: 'NO', label: 'No' }, { value: 'UNSURE', label: 'Unsure' }]} />
-              <Select label="STR Confidence" value={editingDeal.strConfidence || ''} error={editErrors.strConfidence} ref={(el) => (editErrorRefs.current.strConfidence = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, strConfidence: e.target.value }))} options={[{ value: 'FIRST_HAND', label: 'First Hand information' }, { value: 'AIRDNA', label: 'Based on AirDNA' }, { value: 'DIRECTIONAL_ONLY', label: 'Directional only / not fully confident' }]} />
-              <Input label="STR Listing Link" value={editingDeal.strListingLink || ''} onChange={(e) => setEditingDeal((prev) => ({ ...prev, strListingLink: e.target.value }))} />
-              <Input label="STR Data Sheets Link" value={editingDeal.strDataSheetsLink || ''} onChange={(e) => setEditingDeal((prev) => ({ ...prev, strDataSheetsLink: e.target.value }))} />
-            </div>
-
-            <CheckboxGroup label="Vacation Rental Markets" options={VACATION_RENTAL_MARKETS} values={editingDeal.vacationRentalMarkets || []} onChange={(vals) => setEditingDeal((prev) => ({ ...prev, vacationRentalMarkets: vals }))} />
-
-            {/* Travel Motivations */}
-            <div className="mb-6">
-              <label className="block text-base font-semibold text-text-primary mb-2">Why Do People Travel to This Destination?</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {['Conventions & Conferences', 'Exhibitions & Trade Shows', 'Medical Facilities', 'College Activities', 'Sporting Events', 'Theme Parks', 'Relax & Unwind', 'Sportsman Destinations – Fishing & Hunting', 'Outdoor Activities – Hiking, Biking, Rafting, Skiing, Boating', 'State & National Park Visits', 'Unplug & Disconnect', 'Experience a Unique Culture', 'Romantic Getaway', 'Historic Districts & Attractions', 'Bleisure – Business & Leisure Travel', 'Food & Wine Tasting', 'Art & Cultural Experience'].map((reason) => (
-                  <label key={reason} className="flex items-center space-x-2">
-                    <input type="checkbox" checked={editingDeal.travelMotivations?.includes(reason) || false} onChange={(e) => setEditingDeal((prev) => ({ ...prev, travelMotivations: e.target.checked ? [...(prev.travelMotivations || []), reason] : (prev.travelMotivations || []).filter((r) => r !== reason) }))} />
-                    <span className="text-sm text-text-primary">{reason}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <Textarea label={<span className="text-base font-semibold">What Do Rental Guests Want Most in This Area?</span>} value={editingDeal.guestDemandInsights || ''} error={editErrors.guestDemandInsights} ref={(el) => (editErrorRefs.current.guestDemandInsights = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, guestDemandInsights: e.target.value }))} rows={4} placeholder="Insights into guest expectations, amenities, or experiences..." />
-              <Textarea label={<span className="text-base font-semibold">How Can We Add Value to This Property to Increase Income?</span>} value={editingDeal.valueAddOpportunities || ''} error={editErrors.valueAddOpportunities} ref={(el) => (editErrorRefs.current.valueAddOpportunities = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, valueAddOpportunities: e.target.value }))} rows={4} placeholder="Examples: pool, hot tub, bikes, beach gear, game tables, etc." />
-              <Textarea label={<span className="text-base font-semibold">Recommended Property Managers, Contractors, or Cleaning Companies</span>} value={editingDeal.localContacts || ''} error={editErrors.localContacts} ref={(el) => (editErrorRefs.current.localContacts = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, localContacts: e.target.value }))} rows={4} placeholder="List any trusted local contacts buyers could use..." />
-            </div>
-
-            {/* Media */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-text-primary mb-4">Property Photos and Videos</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FileUpload label="Interior Photos" accept="image/*" multiple value={editingDeal.interiorImages || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, interiorImages: urls }))} error={editErrors?.interiorImages} ref={(el) => (editErrorRefs.current.interiorImages = el)} />
-                <FileUpload label="Exterior Photos" accept="image/*" multiple value={editingDeal.exteriorImages || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, exteriorImages: urls }))} error={editErrors?.exteriorImages} ref={(el) => (editErrorRefs.current.exteriorImages = el)} />
-                <div className="col-span-full">
-                  <FileUpload label="Additional Photos" accept="image/*" multiple value={editingDeal.additionalImages || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, additionalImages: urls }))} error={editErrors?.additionalImages} />
+                <div className="text-xs text-text-secondary truncate mt-1 flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <svg className="w-3 h-3 shrink-0 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="truncate">{[editingDeal.streetAddress, editingDeal.city, editingDeal.stateRegion].filter(Boolean).join(', ') || '—'}</span>
+                  </span>
+                  {editingDeal.price && (
+                    <>
+                      <span className="text-border-subtle">•</span>
+                      <span className="font-semibold text-text-primary">${formatPrice(editingDeal.price)}</span>
+                    </>
+                  )}
                 </div>
               </div>
-              <div className="mt-6">
-                <FileUpload label="Videos" accept="video/*" multiple value={editingDeal.videos || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, videos: urls }))} />
+              <div className="flex items-center gap-1 shrink-0">
+                <button type="button" onClick={expandAllAccordions} className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-100 transition-colors">Expand all</button>
+                <span className="h-4 w-px bg-blue-200" />
+                <button type="button" onClick={collapseAllAccordions} className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-100 transition-colors">Collapse all</button>
               </div>
             </div>
 
-            <Input label="Special Tags (comma separated)" value={(editingDeal.specialTags || []).join(', ')} onChange={(e) => setEditingDeal((prev) => ({ ...prev, specialTags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }))} />
-            <Textarea label="Additional Info" value={editingDeal.additionalInfo || ''} error={editErrors.additionalInfo} ref={(el) => (editErrorRefs.current.additionalInfo = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, additionalInfo: e.target.value }))} />
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto bg-gray-100 px-6 py-5 space-y-3">
 
-            {Object.keys(editErrors).length > 0 && (
-              <div className="mb-4 rounded border border-border-subtle bg-surface p-4">
-                <p className="font-semibold text-text-primary mb-2">Please fix the following errors:</p>
-                <ul className="list-disc list-inside space-y-1 text-sm text-text-secondary">
-                  {Object.entries(editErrors).map(([field, message]) => (
-                    <li key={field}>
-                      <button type="button" onClick={() => { const ref = editErrorRefs.current[field]; ref?.scrollIntoView({ behavior: 'smooth', block: 'center' }); ref?.focus?.(); }}>
-                        {field}: {message}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div className="mt-6 border-t border-border-subtle pt-6 flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setEditingDeal(null)}>Cancel</Button>
-              <Button variant="primary" onClick={saveEdit} loading={updateMutation.isPending}>Save Changes</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Underwriting Modal */}
-      {underwritingDeal && (
-        <Modal isOpen={!!underwritingDeal} onClose={() => { setUnderwritingDeal(null); setEditErrors({}); }} title="Underwriting & Analysis" size="xl">
-          <div className="space-y-10 max-h-[80vh] overflow-y-auto">
-            <div className="p-6 space-y-10">
-              {/* Market Definition */}
-              <section className="space-y-6">
-                <h3 className="text-lg font-semibold text-text-primary">Market Definition</h3>
+              {/* ═══ User Information Accordion ═══ */}
+              <AccordionSection title="User Information" isOpen={openAccordions.userInfo} onToggle={() => toggleAccordion('userInfo')}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Select label="Market Type" value={underwritingDeal.underwritingMarketType || ''} error={editErrors.underwritingMarketType} ref={(el) => (editErrorRefs.current.underwritingMarketType = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, underwritingMarketType: e.target.value }))} options={[{ value: 'MARKET', label: 'Market' }, { value: 'SUBMARKET', label: 'Submarket' }]} />
-                  <Select label="Market Size (Active Listings)" value={underwritingDeal.underwritingMarketSize || ''} error={editErrors.underwritingMarketSize} ref={(el) => (editErrorRefs.current.underwritingMarketSize = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, underwritingMarketSize: e.target.value }))} options={[{ value: '<50', label: 'Less Than 50' }, { value: '51-100', label: '51–100' }, { value: '101-250', label: '101–250 (Recommended)' }, { value: '251-500', label: '251–500 (Recommended)' }, { value: '500+', label: 'Over 500' }]} />
+                  <Input label="Full Name" value={editingDeal?.submitter?.name || editingDeal?.submitterName || ''} readOnly className="cursor-not-allowed bg-app" />
+                  <Input label="Email" value={editingDeal?.submitter?.email || editingDeal?.submitterEmail || ''} readOnly className="cursor-not-allowed bg-app" />
+                  <Input label="Phone" value={formatPhoneDisplay(editingDeal?.submitter?.phone || editingDeal?.submitterPhone || '')} readOnly className="cursor-not-allowed bg-app" />
+                  <Input label="User Type" value={getUserTypeLabel(editingDeal?.submitter?.userType || editingDeal?.submitterUserType) || ''} readOnly className="cursor-not-allowed bg-app" />
+                  <Select
+                    label="Submitter Relationship"
+                    value={editingDeal.submitterRelationship || ''}
+                    onChange={(e) => setEditingDeal((prev) => ({ ...prev, submitterRelationship: e.target.value }))}
+                    options={[
+                      { value: 'TEAM_MEMBER', label: 'Team Member' },
+                      { value: 'REALTOR_LISTING_OWNER', label: 'Realtor – Listing Owner' },
+                      { value: 'REALTOR_NOT_LISTING_OWNER', label: 'Realtor – Not Listing Owner' },
+                      { value: 'WHOLESALER_HOLDS_CONTRACT', label: 'Wholesaler – Holds Contract' },
+                      { value: 'WHOLESALER_NO_CONTRACT', label: 'Wholesaler – No Contract' },
+                      { value: 'REAL_ESTATE_PROFESSIONAL', label: 'Real Estate Professional' },
+                      { value: 'BIRDDOGGER', label: 'Bird Dogger' },
+                    ]}
+                  />
                 </div>
-              </section>
+                <div className="bg-surface border border-border-subtle rounded-lg p-4" style={{ display: 'none' }}>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" checked={!!editingDeal.priorityFirstAccess} onChange={(e) => setEditingDeal((prev) => ({ ...prev, priorityFirstAccess: e.target.checked }))} className="mt-1 w-5 h-5 accent-accent" />
+                    <div>
+                      <div className="text-base font-semibold text-text-primary">Premium First Access</div>
+                      <div className="text-sm text-text-secondary mt-0.5">Give this property early visibility to VIP users before public release.</div>
+                    </div>
+                  </label>
+                </div>
+              </AccordionSection>
 
-              {/* Total Market Revenue */}
-              <section className="space-y-6">
-                <h3 className="text-lg font-semibold text-text-primary">Total Market Revenue</h3>
+              {/* ═══ Property Accordion ═══ */}
+              <AccordionSection title="Property" isOpen={openAccordions.property} onToggle={() => toggleAccordion('property')}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input label="Year Built" type="text" inputMode="numeric" value={editingDeal.yearBuilt || ''} error={editErrors.yearBuilt} ref={(el) => (editErrorRefs.current.yearBuilt = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, yearBuilt: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Input label="Bedrooms" type="text" inputMode="numeric" value={formatNumber(editingDeal.bedrooms || '')} error={editErrors.bedrooms} ref={(el) => (editErrorRefs.current.bedrooms = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, bedrooms: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Input label="Bathrooms" type="text" inputMode="numeric" value={formatNumber(editingDeal.bathrooms || '')} error={editErrors.bathrooms} ref={(el) => (editErrorRefs.current.bathrooms = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, bathrooms: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <DateInput
+                    label="Property Expiry Date"
+                    name="expiry_date"
+                    value={editingDeal.expiry_date ?? ''}
+                    error={editErrors.expiry_date}
+                    ref={(el) => (editErrorRefs.current.expiry_date = el)}
+                    onChange={(e) => setEditingDeal((prev) => ({ ...prev, expiry_date: e.target.value }))}
+                    placeholder="Select date"
+                  />
+                  <Input label="Square Footage" type="text" inputMode="numeric" value={formatNumber(editingDeal.squareFootage || '')} error={editErrors.squareFootage} ref={(el) => (editErrorRefs.current.squareFootage = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, squareFootage: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Select label="Category" value={editingDeal.category || ''} error={editErrors.category} ref={(el) => (editErrorRefs.current.category = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, category: e.target.value }))} options={CATEGORIES.filter((opt) => opt.value !== 'All')} />
+                </div>
+                <Input label="Title" value={editingDeal.title || ''} readOnly className="bg-app cursor-not-allowed" />
+                <Textarea label="Description" value={editingDeal.description || ''} error={editErrors.description} ref={(el) => (editErrorRefs.current.description = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, description: e.target.value }))} />
+              </AccordionSection>
+
+              {/* ═══ Location Accordion ═══ */}
+              <AccordionSection title="Location" isOpen={openAccordions.location} onToggle={() => toggleAccordion('location')}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input label="Street Address" value={editingDeal.streetAddress || ''} error={editErrors.streetAddress} ref={(el) => (editErrorRefs.current.streetAddress = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, streetAddress: e.target.value }))} />
+                  <Input label="Address Line 2" value={editingDeal.addressLine2 || ''} onChange={(e) => setEditingDeal((prev) => ({ ...prev, addressLine2: e.target.value }))} />
+                  <Input label="City" value={editingDeal.city || ''} error={editErrors.city} ref={(el) => (editErrorRefs.current.city = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, city: e.target.value }))} />
+                  <Input label="State/Region/Province" value={editingDeal.stateRegion || ''} error={editErrors.stateRegion} ref={(el) => (editErrorRefs.current.stateRegion = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, stateRegion: e.target.value }))} />
+                  <Input label="Postal/Zip Code" value={editingDeal.postalCode || ''} error={editErrors.postalCode} ref={(el) => (editErrorRefs.current.postalCode = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, postalCode: e.target.value }))} />
+                </div>
+              </AccordionSection>
+
+              {/* ═══ Financial Accordion ═══ */}
+              <AccordionSection title="Financial" isOpen={openAccordions.financial} onToggle={() => toggleAccordion('financial')}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Select
+                    label="HOA"
+                    value={editingDeal.isHOA ? 'YES' : 'NO'}
+                    onChange={(e) => { const isHOA = e.target.value === 'YES'; setEditingDeal((prev) => ({ ...prev, isHOA, hoaMonthlyFee: isHOA ? prev.hoaMonthlyFee : null })); }}
+                    options={[{ value: 'NO', label: 'No' }, { value: 'YES', label: 'Yes' }]}
+                  />
+                  <Input label="HOA Monthly Fee" type="text" inputMode="numeric" value={formatNumber(editingDeal.hoaMonthlyFee || '')} error={editErrors.hoaMonthlyFee} ref={(el) => (editErrorRefs.current.hoaMonthlyFee = el)} disabled={!editingDeal.isHOA} className={!editingDeal.isHOA ? 'bg-app cursor-not-allowed' : ''} placeholder={editingDeal.isHOA ? '' : 'N/A'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, hoaMonthlyFee: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input label="Price" type="text" inputMode="numeric" value={formatNumber(editingDeal.price || '')} error={editErrors.price} ref={(el) => (editErrorRefs.current.price = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, price: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <label className="flex items-center gap-3 cursor-pointer mt-2">
+                    <input type="checkbox" checked={!!editingDeal.discountPrice} onChange={(e) => setEditingDeal((prev) => ({ ...prev, discountPrice: e.target.checked }))} className="w-5 h-5 accent-accent" />
+                    <span className="text-sm font-medium text-text-primary">Discount Price</span>
+                  </label>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Select label="Financing Type" value={editingDeal.financingType || ''} error={editErrors.financingType} ref={(el) => (editErrorRefs.current.financingType = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, financingType: e.target.value }))} options={[{ value: 'traditional', label: 'Traditional' }, { value: 'subject-to', label: 'Subject-To' }, { value: 'hybrid', label: 'Hybrid' }, { value: 'seller', label: 'Seller Financing' }, { value: 'cash', label: 'Cash' }]} />
+                  <Input label="EMD" type="text" inputMode="numeric" value={formatNumber(editingDeal.emd || '')} error={editErrors.emd} ref={(el) => (editErrorRefs.current.emd = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, emd: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Input label="Down Payment" type="text" inputMode="numeric" value={formatNumber(editingDeal.downPayment || '')} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, downPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <DateInput label="Expected Close of Escrow" name="expectedCloseDate" value={editingDeal.expectedCloseDate ?? ''} error={editErrors.expectedCloseDate} ref={(el) => (editErrorRefs.current.expectedCloseDate = el)} disabled={editingDeal.status === 'sold'} onChange={(e) => setEditingDeal((prev) => ({ ...prev, expectedCloseDate: e.target.value }))} placeholder="Select date" />
+                </div>
+                <Textarea label="Additional Financial Information" value={editingDeal.financialInfo || ''} error={editErrors.financialInfo} ref={(el) => (editErrorRefs.current.financialInfo = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, financialInfo: e.target.value }))} />
+              </AccordionSection>
+
+              {/* ═══ Additional Accordion ═══ */}
+              <AccordionSection title="Additional" isOpen={openAccordions.additional} onToggle={() => toggleAccordion('additional')}>
+                <Select
+                  label="Turnkey/Furnished"
+                  value={editingDeal.turnkeyFurnished || ''}
+                  error={editErrors.turnkeyFurnished}
+                  ref={(el) => (editErrorRefs.current.turnkeyFurnished = el)}
+                  onChange={(e) => setEditingDeal((prev) => ({ ...prev, turnkeyFurnished: e.target.value }))}
+                  options={[
+                    { value: 'TURNKEY_OPERATING', label: 'Turnkey and Currently Operating As a Short-Term Rental.' },
+                    { value: 'FURNISHED_NOT_OPERATING', label: 'Fully Furnished but not Currently Operating As a Short-Term Rental.' },
+                    { value: 'PARTIALLY_FURNISHED', label: 'Partially Furnished but not Currently Operating As a Short-Term Rental.' },
+                    { value: 'NOT_FURNISHED', label: 'Not Furnished or Currently Operating as a Short-Term Rental.' },
+                  ]}
+                />
+                {/* Subject-to Loan Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input label="Subject-to Loan Balance" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjLoanBalance || '')} error={editErrors.subjLoanBalance} ref={(el) => (editErrorRefs.current.subjLoanBalance = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjLoanBalance: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Input label="Subject-to Interest Rate" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjInterestRate || '')} error={editErrors.subjInterestRate} ref={(el) => (editErrorRefs.current.subjInterestRate = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjInterestRate: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <DateInput label="Subject-to Loan Maturity" name="subjLoanMaturity" value={editingDeal.subjLoanMaturity ?? ''} error={editErrors.subjLoanMaturity} ref={(el) => (editErrorRefs.current.subjLoanMaturity = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjLoanMaturity: e.target.value }))} placeholder="Select date" />
+                  <Input label="Subject-to Monthly Principal" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjMonthlyPrincipal || '')} error={editErrors.subjMonthlyPrincipal} ref={(el) => (editErrorRefs.current.subjMonthlyPrincipal = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjMonthlyPrincipal: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Input label="Subject-to Monthly Interest" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjMonthlyInterest || '')} error={editErrors.subjMonthlyInterest} ref={(el) => (editErrorRefs.current.subjMonthlyInterest = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjMonthlyInterest: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Input label="Subject-to Monthly Taxes & Insurance" type="text" inputMode="numeric" value={formatNumber(editingDeal.subjMonthlyTaxesInsurance || '')} error={editErrors.subjMonthlyTaxesInsurance} ref={(el) => (editErrorRefs.current.subjMonthlyTaxesInsurance = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, subjMonthlyTaxesInsurance: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                </div>
+                {/* Seller Financing Info */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input label="Seller Loan Amount" type="text" inputMode="numeric" value={formatNumber(editingDeal.sellerLoanAmount || '')} error={editErrors.sellerLoanAmount} ref={(el) => (editErrorRefs.current.sellerLoanAmount = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, sellerLoanAmount: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Input label="Seller Interest Rate" type="text" inputMode="numeric" value={formatNumber(editingDeal.sellerInterestRate || '')} error={editErrors.sellerInterestRate} ref={(el) => (editErrorRefs.current.sellerInterestRate = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, sellerInterestRate: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <DateInput label="Seller Loan Maturity" name="sellerLoanMaturity" value={editingDeal.sellerLoanMaturity ?? ''} error={editErrors.sellerLoanMaturity} ref={(el) => (editErrorRefs.current.sellerLoanMaturity = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, sellerLoanMaturity: e.target.value }))} placeholder="Select date" />
+                  <Input label="Seller Monthly Payment" type="text" inputMode="numeric" value={formatNumber(editingDeal.sellerMonthlyPayment || '')} error={editErrors.sellerMonthlyPayment} ref={(el) => (editErrorRefs.current.sellerMonthlyPayment = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, sellerMonthlyPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                  <Input label="Total Monthly Payment" type="text" inputMode="numeric" value={formatNumber(editingDeal.totalMonthlyPayment || '')} error={editErrors.totalMonthlyPayment} ref={(el) => (editErrorRefs.current.totalMonthlyPayment = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, totalMonthlyPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                </div>
+                {/* STR Data */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Select label="STR Zoning" value={editingDeal.strZoning || ''} error={editErrors.strZoning} ref={(el) => (editErrorRefs.current.strZoning = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, strZoning: e.target.value }))} options={[{ value: 'YES', label: 'Yes' }, { value: 'NO', label: 'No' }, { value: 'UNSURE', label: 'Unsure' }]} />
+                  <Select label="STR Confidence" value={editingDeal.strConfidence || ''} error={editErrors.strConfidence} ref={(el) => (editErrorRefs.current.strConfidence = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, strConfidence: e.target.value }))} options={[{ value: 'FIRST_HAND', label: 'First Hand information' }, { value: 'AIRDNA', label: 'Based on AirDNA' }, { value: 'DIRECTIONAL_ONLY', label: 'Directional only / not fully confident' }]} />
+                  <Input label="STR Listing Link" value={editingDeal.strListingLink || ''} onChange={(e) => setEditingDeal((prev) => ({ ...prev, strListingLink: e.target.value }))} />
+                  <Input label="STR Data Sheets Link" value={editingDeal.strDataSheetsLink || ''} onChange={(e) => setEditingDeal((prev) => ({ ...prev, strDataSheetsLink: e.target.value }))} />
+                </div>
+              </AccordionSection>
+
+              {/* ═══ Rental Markets Accordion ═══ */}
+              <AccordionSection title="Rental Markets" isOpen={openAccordions.rentalMarkets} onToggle={() => toggleAccordion('rentalMarkets')}>
+                <CheckboxGroup label="Vacation Rental Markets" options={VACATION_RENTAL_MARKETS} values={editingDeal.vacationRentalMarkets || []} onChange={(vals) => setEditingDeal((prev) => ({ ...prev, vacationRentalMarkets: vals }))} />
+
+                {/* Travel Motivations */}
+                <div>
+                  <label className="block text-base font-semibold text-text-primary mb-2">Why Do People Travel to This Destination?</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {['Conventions & Conferences', 'Exhibitions & Trade Shows', 'Medical Facilities', 'College Activities', 'Sporting Events', 'Theme Parks', 'Relax & Unwind', 'Sportsman Destinations – Fishing & Hunting', 'Outdoor Activities – Hiking, Biking, Rafting, Skiing, Boating', 'State & National Park Visits', 'Unplug & Disconnect', 'Experience a Unique Culture', 'Romantic Getaway', 'Historic Districts & Attractions', 'Bleisure – Business & Leisure Travel', 'Food & Wine Tasting', 'Art & Cultural Experience'].map((reason) => (
+                      <label key={reason} className="flex items-center space-x-2">
+                        <input type="checkbox" checked={editingDeal.travelMotivations?.includes(reason) || false} onChange={(e) => setEditingDeal((prev) => ({ ...prev, travelMotivations: e.target.checked ? [...(prev.travelMotivations || []), reason] : (prev.travelMotivations || []).filter((r) => r !== reason) }))} />
+                        <span className="text-sm text-text-primary">{reason}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <Textarea label={<span className="text-base font-semibold">What Do Rental Guests Want Most in This Area?</span>} value={editingDeal.guestDemandInsights || ''} error={editErrors.guestDemandInsights} ref={(el) => (editErrorRefs.current.guestDemandInsights = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, guestDemandInsights: e.target.value }))} rows={4} placeholder="Insights into guest expectations, amenities, or experiences..." />
+                <Textarea label={<span className="text-base font-semibold">How Can We Add Value to This Property to Increase Income?</span>} value={editingDeal.valueAddOpportunities || ''} error={editErrors.valueAddOpportunities} ref={(el) => (editErrorRefs.current.valueAddOpportunities = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, valueAddOpportunities: e.target.value }))} rows={4} placeholder="Examples: pool, hot tub, bikes, beach gear, game tables, etc." />
+                <Textarea label={<span className="text-base font-semibold">Recommended Property Managers, Contractors, or Cleaning Companies</span>} value={editingDeal.localContacts || ''} error={editErrors.localContacts} ref={(el) => (editErrorRefs.current.localContacts = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, localContacts: e.target.value }))} rows={4} placeholder="List any trusted local contacts buyers could use..." />
+              </AccordionSection>
+
+              {/* ═══ Property Photos and Videos Accordion ═══ */}
+              <AccordionSection title="Property Photos and Videos" isOpen={openAccordions.photosVideos} onToggle={() => toggleAccordion('photosVideos')}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FileUpload label="Interior Photos" accept="image/*" multiple value={editingDeal.interiorImages || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, interiorImages: urls }))} error={editErrors?.interiorImages} ref={(el) => (editErrorRefs.current.interiorImages = el)} />
+                  <FileUpload label="Exterior Photos" accept="image/*" multiple value={editingDeal.exteriorImages || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, exteriorImages: urls }))} error={editErrors?.exteriorImages} ref={(el) => (editErrorRefs.current.exteriorImages = el)} />
+                  <div className="col-span-full">
+                    <FileUpload label="Additional Photos" accept="image/*" multiple value={editingDeal.additionalImages || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, additionalImages: urls }))} error={editErrors?.additionalImages} />
+                  </div>
+                </div>
+                <FileUpload label="Videos" accept="video/*" multiple value={editingDeal.videos || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, videos: urls }))} />
+                <Input label="Special Tags (comma separated)" value={(editingDeal.specialTags || []).join(', ')} onChange={(e) => setEditingDeal((prev) => ({ ...prev, specialTags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) }))} />
+                <Textarea label="Additional Info" value={editingDeal.additionalInfo || ''} error={editErrors.additionalInfo} ref={(el) => (editErrorRefs.current.additionalInfo = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, additionalInfo: e.target.value }))} />
+              </AccordionSection>
+
+              {/* ── Underwriting & Analysis divider ── */}
+              <div className="flex items-center gap-3 pt-4 pb-2">
+                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-300 to-blue-300" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-blue-200 shadow-sm text-[11px] font-bold uppercase tracking-widest text-blue-600">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Underwriting & Analysis
+                </span>
+                <div className="h-px flex-1 bg-gradient-to-l from-transparent via-blue-300 to-blue-300" />
+              </div>
+
+              {/* ═══ Market Definition Accordion ═══ */}
+              <AccordionSection title="Market Definition" isOpen={openAccordions.marketDefinition} onToggle={() => toggleAccordion('marketDefinition')}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Select label="Market Type" value={editingDeal.underwritingMarketType || ''} error={editErrors.underwritingMarketType} ref={(el) => (editErrorRefs.current.underwritingMarketType = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, underwritingMarketType: e.target.value }))} options={[{ value: 'MARKET', label: 'Market' }, { value: 'SUBMARKET', label: 'Submarket' }]} />
+                  <Select label="Market Size (Active Listings)" value={editingDeal.underwritingMarketSize || ''} error={editErrors.underwritingMarketSize} ref={(el) => (editErrorRefs.current.underwritingMarketSize = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, underwritingMarketSize: e.target.value }))} options={[{ value: '<50', label: 'Less Than 50' }, { value: '51-100', label: '51–100' }, { value: '101-250', label: '101–250 (Recommended)' }, { value: '251-500', label: '251–500 (Recommended)' }, { value: '500+', label: 'Over 500' }]} />
+                </div>
+              </AccordionSection>
+
+              {/* ═══ Total Market Revenue Accordion ═══ */}
+              <AccordionSection title="Total Market Revenue" isOpen={openAccordions.totalMarketRevenue} onToggle={() => toggleAccordion('totalMarketRevenue')}>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {[12, 24, 36, 48, 60, 72, 84].map((m) => (
-                    <NumericInput key={m} label={`${m} Months ($)`} value={formatNumber(underwritingDeal[`marketRevenue_${m}m`] || '')} error={editErrors[`marketRevenue_${m}m`]} ref={(el) => (editErrorRefs.current[`marketRevenue_${m}m`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`marketRevenue_${m}m`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                    <NumericInput key={m} label={`${m} Months ($)`} value={formatNumber(editingDeal[`marketRevenue_${m}m`] || '')} error={editErrors[`marketRevenue_${m}m`]} ref={(el) => (editErrorRefs.current[`marketRevenue_${m}m`] = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, [`marketRevenue_${m}m`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
                   ))}
                 </div>
-              </section>
+              </AccordionSection>
 
-              {/* AGR calculated from Budget tier */}
-              <section className="space-y-6">
-                <h3 className="text-lg font-semibold text-text-primary">Assumed Gross Revenue (AGR)</h3>
+              {/* ═══ Average Nightly Rate (ANR) Accordion ═══ */}
+              <AccordionSection title="Average Nightly Rate (ANR)" isOpen={openAccordions.anr} onToggle={() => toggleAccordion('anr')}>
+                {/* AGR calculated from Budget tier */}
                 <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
                   <div className="text-xs text-text-secondary font-medium mb-1">AGR — 365 × Budget Occupancy Rate × Budget ANR</div>
                   <div className="text-base font-semibold text-primary">
-                    ${Number(underwritingDeal?.agr || 0).toLocaleString('en-US')}
+                    ${Number(editingDeal?.agr || 0).toLocaleString('en-US')}
                   </div>
                   <div className="text-xs text-text-secondary mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div>Sales Tax (6%): <span className="font-semibold text-text-primary">${Math.round((Number(underwritingDeal?.agr) || 0) * 0.06).toLocaleString('en-US')}</span></div>
-                    <div>OTA Fees (15%): <span className="font-semibold text-text-primary">${Math.round((Number(underwritingDeal?.agr) || 0) * 0.15).toLocaleString('en-US')}</span></div>
-                    <div>Management (25%): <span className="font-semibold text-text-primary">${Math.round((Number(underwritingDeal?.agr) || 0) * 0.25).toLocaleString('en-US')}</span></div>
+                    <div>Sales Tax (6%): <span className="font-semibold text-text-primary">${Math.round((Number(editingDeal?.agr) || 0) * 0.06).toLocaleString('en-US')}</span></div>
+                    <div>OTA Fees (15%): <span className="font-semibold text-text-primary">${Math.round((Number(editingDeal?.agr) || 0) * 0.15).toLocaleString('en-US')}</span></div>
+                    <div>Management (25%): <span className="font-semibold text-text-primary">${Math.round((Number(editingDeal?.agr) || 0) * 0.25).toLocaleString('en-US')}</span></div>
                   </div>
                 </div>
-              </section>
-
-              {/* ANR */}
-              <section className="space-y-6">
-                <h3 className="text-lg font-semibold text-text-primary">Average Nightly Rate (ANR)</h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   {['budget', 'economy', 'midscale', 'upscale', 'luxury'].map((tier) => {
                     const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
                     return (
                       <div key={tier} className="border border-border-subtle rounded-lg p-3 space-y-2">
                         <div className="text-xs font-semibold text-primary uppercase tracking-wide">{tierLabel}</div>
-                        <NumericInput label="ANR ($)" value={formatNumber(underwritingDeal[`anr_${tier}`] || '')} error={editErrors[`anr_${tier}`]} ref={(el) => (editErrorRefs.current[`anr_${tier}`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`anr_${tier}`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-                        <NumericInput label="Occupancy Rate (%)" value={underwritingDeal[`occupancyRate_${tier}`] ?? ''} error={editErrors[`occupancyRate_${tier}`]} ref={(el) => (editErrorRefs.current[`occupancyRate_${tier}`] = el)} onChange={(e) => { let val = unformatNumber(e.target.value).replace(/[^0-9.]/g, ''); if (val !== '' && Number(val) > 100) val = '100'; if (val !== '' && Number(val) < 0) val = '0'; setUnderwritingDeal((prev) => ({ ...prev, [`occupancyRate_${tier}`]: val })); }} />
+                        <NumericInput label="ANR ($)" value={formatNumber(editingDeal[`anr_${tier}`] || '')} error={editErrors[`anr_${tier}`]} ref={(el) => (editErrorRefs.current[`anr_${tier}`] = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, [`anr_${tier}`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                        <NumericInput label="Occupancy Rate (%)" value={editingDeal[`occupancyRate_${tier}`] ?? ''} error={editErrors[`occupancyRate_${tier}`]} ref={(el) => (editErrorRefs.current[`occupancyRate_${tier}`] = el)} onChange={(e) => { let val = unformatNumber(e.target.value).replace(/[^0-9.]/g, ''); if (val !== '' && Number(val) > 100) val = '100'; if (val !== '' && Number(val) < 0) val = '0'; setEditingDeal((prev) => ({ ...prev, [`occupancyRate_${tier}`]: val })); }} />
                       </div>
                     );
                   })}
                 </div>
-              </section>
+              </AccordionSection>
 
-              {/* EGR */}
-              <section className="space-y-6">
-                <h3 className="text-lg font-semibold text-text-primary">Estimated Gross Revenue (EGR)</h3>
+              {/* ═══ Estimated Gross Revenue (EGR) Accordion ═══ */}
+              <AccordionSection title="Estimated Gross Revenue (EGR)" isOpen={openAccordions.egr} onToggle={() => toggleAccordion('egr')}>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   {['budget', 'economy', 'midscale', 'upscale', 'luxury'].map((tier) => (
-                    <NumericInput key={tier} label={tier.charAt(0).toUpperCase() + tier.slice(1) + ' ($)'} value={formatNumber(underwritingDeal[`egr_${tier}`] || '')} error={editErrors[`egr_${tier}`]} ref={(el) => (editErrorRefs.current[`egr_${tier}`] = el)} onChange={(e) => { let val = unformatNumber(e.target.value).replace(/[^0-9.]/g, ''); const firstDot = val.indexOf('.'); if (firstDot !== -1) val = val.slice(0, firstDot + 1) + val.slice(firstDot + 1).replace(/\./g, ''); const [intPart, decPart] = val.split('.'); if (decPart !== undefined) val = `${intPart}.${decPart.slice(0, 2)}`; setUnderwritingDeal((prev) => ({ ...prev, [`egr_${tier}`]: val })); }} />
+                    <NumericInput key={tier} label={tier.charAt(0).toUpperCase() + tier.slice(1) + ' ($)'} value={formatNumber(editingDeal[`egr_${tier}`] || '')} error={editErrors[`egr_${tier}`]} ref={(el) => (editErrorRefs.current[`egr_${tier}`] = el)} onChange={(e) => { let val = unformatNumber(e.target.value).replace(/[^0-9.]/g, ''); const firstDot = val.indexOf('.'); if (firstDot !== -1) val = val.slice(0, firstDot + 1) + val.slice(firstDot + 1).replace(/\./g, ''); const [intPart, decPart] = val.split('.'); if (decPart !== undefined) val = `${intPart}.${decPart.slice(0, 2)}`; setEditingDeal((prev) => ({ ...prev, [`egr_${tier}`]: val })); }} />
                   ))}
                 </div>
-              </section>
+              </AccordionSection>
 
-              {/* Cost Segregation */}
-              <section className="space-y-6">
-                <h3 className="text-lg font-semibold text-text-primary">Cost Segregation, Bonus Depreciation, and Tax Scholarships</h3>
+              {/* ═══ Cost Segregation Accordion ═══ */}
+              <AccordionSection title="Cost Segregation, Bonus Depreciation, and Tax Scholarships" isOpen={openAccordions.costSegregation} onToggle={() => toggleAccordion('costSegregation')}>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Input label="Purchase Price ($)" type="text" inputMode="numeric" value={formatNumber(underwritingDeal?.price || '')} disabled />
-                  <NumericInput label="Cost Segregation (%)" value={underwritingDeal.costSegregationPercent || ''} error={editErrors.costSegregationPercent} ref={(el) => (editErrorRefs.current.costSegregationPercent = el)} onChange={(e) => {
+                  <Input label="Purchase Price ($)" type="text" inputMode="numeric" value={formatNumber(editingDeal?.price || '')} disabled />
+                  <NumericInput label="Cost Segregation (%)" value={editingDeal.costSegregationPercent || ''} error={editErrors.costSegregationPercent} ref={(el) => (editErrorRefs.current.costSegregationPercent = el)} onChange={(e) => {
                     let val = unformatNumber(e.target.value).replace(/[^0-9.]/g, '');
                     if (val !== '' && Number(val) > 100) val = '100';
                     if (val !== '' && Number(val) < 0) val = '0';
                     incomeReductionManualRef.current = false;
-                    setUnderwritingDeal((prev) => ({ ...prev, costSegregationPercent: val }));
+                    setEditingDeal((prev) => ({ ...prev, costSegregationPercent: val }));
                   }} />
-
                   <NumericInput
                     label="Income Reduction ($)"
-                    value={formatNumber(underwritingDeal.incomeReduction || '')}
+                    value={formatNumber(editingDeal.incomeReduction || '')}
                     error={editErrors.incomeReduction}
                     ref={(el) => (editErrorRefs.current.incomeReduction = el)}
                     onChange={(e) => {
                       const next = unformatNumber(e.target.value).replace(/[^0-9]/g, '');
                       incomeReductionManualRef.current = true;
-                      setUnderwritingDeal((prev) => {
+                      setEditingDeal((prev) => {
                         const taxRate = Number(prev.effectiveTaxRate) || 0;
                         const newIncome = Number(next) || 0;
                         const taxSavings = Math.round(newIncome * (taxRate / 100));
@@ -1845,217 +1952,195 @@ const PropertyManagement = () => {
                       });
                     }}
                   />
-
-                  <NumericInput label="Tax Rate (%)" value={underwritingDeal.effectiveTaxRate || ''} error={editErrors.effectiveTaxRate} ref={(el) => (editErrorRefs.current.effectiveTaxRate = el)} onChange={(e) => {
+                  <NumericInput label="Tax Rate (%)" value={editingDeal.effectiveTaxRate || ''} error={editErrors.effectiveTaxRate} ref={(el) => (editErrorRefs.current.effectiveTaxRate = el)} onChange={(e) => {
                     let val = unformatNumber(e.target.value).replace(/[^0-9.]/g, '');
                     if (val !== '' && Number(val) > 100) val = '100';
                     if (val !== '' && Number(val) < 0) val = '0';
-                    setUnderwritingDeal((prev) => ({ ...prev, effectiveTaxRate: val }));
+                    setEditingDeal((prev) => ({ ...prev, effectiveTaxRate: val }));
                   }} />
-
-                  {/* ✅ Tax Savings — validated on submit via validateDealForm (0 to $500,000) */}
                   <NumericInput
                     label="Tax Savings ($)"
-                    value={formatNumber(underwritingDeal.taxSavings || '')}
+                    value={formatNumber(editingDeal.taxSavings || '')}
                     error={editErrors.taxSavings}
                     ref={(el) => (editErrorRefs.current.taxSavings = el)}
                     onChange={(e) => {
                       const val = unformatNumber(e.target.value).replace(/[^0-9]/g, '');
-                      setUnderwritingDeal((prev) => ({
+                      setEditingDeal((prev) => ({
                         ...prev,
                         taxSavings: val,
                       }));
                     }}
                   />
-
-
-
                 </div>
-              </section>
+              </AccordionSection>
 
-              {/* Estimated Expenses */}
-              <section className="space-y-0">
-                <div className="border border-border-subtle rounded-lg overflow-hidden">
-                  {/* Section Header */}
-                  <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-b border-border-subtle">
-                    <span className="text-primary font-bold text-sm">$</span>
-                    <h3 className="text-sm font-semibold text-primary uppercase tracking-wide">Estimated Expenses</h3>
-                  </div>
-
-                  <div className="p-4 space-y-6">
-                    {/* One-Time Fees */}
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">One-Time Fees</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <NumericInput
-                          label="Entry or Down Payment ($)"
-                          value={formatNumber(underwritingDeal.expenseEntryDownPayment || '')}
-                          error={editErrors.expenseEntryDownPayment}
-                          ref={(el) => (editErrorRefs.current.expenseEntryDownPayment = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseEntryDownPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label={`Closing Costs ($)`}
-                          value={formatNumber(underwritingDeal.expenseClosingCosts || '')}
-                          error={editErrors.expenseClosingCosts}
-                          ref={(el) => (editErrorRefs.current.expenseClosingCosts = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseClosingCosts: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Design/Furnishing/Setup/Renovations"
-                          value={formatNumber(underwritingDeal.expenseDesignFurnishing || '')}
-                          error={editErrors.expenseDesignFurnishing}
-                          ref={(el) => (editErrorRefs.current.expenseDesignFurnishing = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseDesignFurnishing: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        {/* Total One-Time */}
-                        <div className="flex flex-col justify-end">
-                          <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
-                            <div className="text-xs text-text-secondary font-medium mb-1">Total One-Time</div>
-                            <div className="text-base font-semibold text-primary">
-                              ${Number(
-                                (Number(underwritingDeal.expenseEntryDownPayment) || 0) +
-                                (Number(underwritingDeal.expenseClosingCosts) || 0) +
-                                (Number(underwritingDeal.expenseDesignFurnishing) || 0)
-                              ).toLocaleString('en-US')}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Annual Fees and Expenses */}
-                    <div className="space-y-3">
-                      <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Annual Fees and Expenses</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <NumericInput
-                          label="Principal and Interest ($)"
-                          value={formatNumber(underwritingDeal.expensePrincipalInterest || '')}
-                          error={editErrors.expensePrincipalInterest}
-                          ref={(el) => (editErrorRefs.current.expensePrincipalInterest = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expensePrincipalInterest: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Property Taxes ($)"
-                          value={formatNumber(underwritingDeal.expensePropertyTaxes || '')}
-                          error={editErrors.expensePropertyTaxes}
-                          ref={(el) => (editErrorRefs.current.expensePropertyTaxes = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expensePropertyTaxes: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Insurance ($)"
-                          value={formatNumber(underwritingDeal.expenseInsurance || '')}
-                          error={editErrors.expenseInsurance}
-                          ref={(el) => (editErrorRefs.current.expenseInsurance = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseInsurance: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Management ($)"
-                          value={formatNumber(underwritingDeal.expenseManagement || '')}
-                          error={editErrors.expenseManagement}
-                          ref={(el) => (editErrorRefs.current.expenseManagement = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseManagement: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="OTA Fees — Airbnb, VRBO, etc. ($)"
-                          value={formatNumber(underwritingDeal.expenseOTAFees || '')}
-                          error={editErrors.expenseOTAFees}
-                          ref={(el) => (editErrorRefs.current.expenseOTAFees = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseOTAFees: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Cleaning ($)"
-                          value={formatNumber(underwritingDeal.expenseCleaning || '')}
-                          error={editErrors.expenseCleaning}
-                          ref={(el) => (editErrorRefs.current.expenseCleaning = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseCleaning: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Maintenance and Repairs ($)"
-                          value={formatNumber(underwritingDeal.expenseMaintenanceRepairs || '')}
-                          error={editErrors.expenseMaintenanceRepairs}
-                          ref={(el) => (editErrorRefs.current.expenseMaintenanceRepairs = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseMaintenanceRepairs: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Utilities and Expenses($)"
-                          value={formatNumber(underwritingDeal.expenseUtilities || '')}
-                          error={editErrors.expenseUtilities}
-                          ref={(el) => (editErrorRefs.current.expenseUtilities = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseUtilities: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="HOA Fees ($) — HOA Monthly Fee × 12"
-                          value={formatNumber(underwritingDeal.expenseHOAFees || '')}
-                          error={editErrors.expenseHOAFees}
-                          ref={(el) => (editErrorRefs.current.expenseHOAFees = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseHOAFees: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Sales Tax ($)"
-                          value={formatNumber(underwritingDeal.expenseSalesTax || '')}
-                          error={editErrors.expenseSalesTax}
-                          ref={(el) => (editErrorRefs.current.expenseSalesTax = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseSalesTax: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Advertising ($)"
-                          value={formatNumber(underwritingDeal.expenseAdvertising || '')}
-                          error={editErrors.expenseAdvertising}
-                          ref={(el) => (editErrorRefs.current.expenseAdvertising = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseAdvertising: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        <NumericInput
-                          label="Misc Expense ($)"
-                          value={formatNumber(underwritingDeal.expenseMisc || '')}
-                          error={editErrors.expenseMisc}
-                          ref={(el) => (editErrorRefs.current.expenseMisc = el)}
-                          onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, expenseMisc: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
-                        />
-                        {/* Total Annual Expenses */}
-                        <div className="flex flex-col justify-end">
-                          <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
-                            <div className="text-xs text-text-secondary font-medium mb-1">Total Annual Expenses</div>
-                            <div className="text-base font-semibold text-primary">
-                              ${Number(
-                                (Number(underwritingDeal.expensePrincipalInterest) || 0) +
-                                (Number(underwritingDeal.expensePropertyTaxes) || 0) +
-                                (Number(underwritingDeal.expenseInsurance) || 0) +
-                                (Number(underwritingDeal.expenseManagement) || 0) +
-                                (Number(underwritingDeal.expenseOTAFees) || 0) +
-                                (Number(underwritingDeal.expenseCleaning) || 0) +
-                                (Number(underwritingDeal.expenseMaintenanceRepairs) || 0) +
-                                (Number(underwritingDeal.expenseUtilities) || 0) +
-                                (Number(underwritingDeal.expenseHOAFees) || 0) +
-                                (Number(underwritingDeal.expenseSalesTax) || 0) +
-                                (Number(underwritingDeal.expenseAdvertising) || 0) +
-                                (Number(underwritingDeal.expenseMisc) || 0)
-                              ).toLocaleString('en-US')}
-                            </div>
-                          </div>
+              {/* ═══ Estimated Expenses Accordion ═══ */}
+              <AccordionSection title="Estimated Expenses" isOpen={openAccordions.estimatedExpenses} onToggle={() => toggleAccordion('estimatedExpenses')}>
+                {/* One-Time Fees */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">One-Time Fees</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <NumericInput
+                      label="Entry or Down Payment ($)"
+                      value={formatNumber(editingDeal.expenseEntryDownPayment || '')}
+                      error={editErrors.expenseEntryDownPayment}
+                      ref={(el) => (editErrorRefs.current.expenseEntryDownPayment = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseEntryDownPayment: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label={`Closing Costs ($)`}
+                      value={formatNumber(editingDeal.expenseClosingCosts || '')}
+                      error={editErrors.expenseClosingCosts}
+                      ref={(el) => (editErrorRefs.current.expenseClosingCosts = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseClosingCosts: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Design/Furnishing/Setup/Renovations"
+                      value={formatNumber(editingDeal.expenseDesignFurnishing || '')}
+                      error={editErrors.expenseDesignFurnishing}
+                      ref={(el) => (editErrorRefs.current.expenseDesignFurnishing = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseDesignFurnishing: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <div className="flex flex-col justify-end">
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+                        <div className="text-xs text-text-secondary font-medium mb-1">Total One-Time</div>
+                        <div className="text-base font-semibold text-primary">
+                          ${Number(
+                            (Number(editingDeal.expenseEntryDownPayment) || 0) +
+                            (Number(editingDeal.expenseClosingCosts) || 0) +
+                            (Number(editingDeal.expenseDesignFurnishing) || 0)
+                          ).toLocaleString('en-US')}
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </section>
+                {/* Annual Fees and Expenses */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Annual Fees and Expenses</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <NumericInput
+                      label="Principal and Interest ($)"
+                      value={formatNumber(editingDeal.expensePrincipalInterest || '')}
+                      error={editErrors.expensePrincipalInterest}
+                      ref={(el) => (editErrorRefs.current.expensePrincipalInterest = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expensePrincipalInterest: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Property Taxes ($)"
+                      value={formatNumber(editingDeal.expensePropertyTaxes || '')}
+                      error={editErrors.expensePropertyTaxes}
+                      ref={(el) => (editErrorRefs.current.expensePropertyTaxes = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expensePropertyTaxes: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Insurance ($)"
+                      value={formatNumber(editingDeal.expenseInsurance || '')}
+                      error={editErrors.expenseInsurance}
+                      ref={(el) => (editErrorRefs.current.expenseInsurance = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseInsurance: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Management ($)"
+                      value={formatNumber(editingDeal.expenseManagement || '')}
+                      error={editErrors.expenseManagement}
+                      ref={(el) => (editErrorRefs.current.expenseManagement = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseManagement: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="OTA Fees — Airbnb, VRBO, etc. ($)"
+                      value={formatNumber(editingDeal.expenseOTAFees || '')}
+                      error={editErrors.expenseOTAFees}
+                      ref={(el) => (editErrorRefs.current.expenseOTAFees = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseOTAFees: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Cleaning ($)"
+                      value={formatNumber(editingDeal.expenseCleaning || '')}
+                      error={editErrors.expenseCleaning}
+                      ref={(el) => (editErrorRefs.current.expenseCleaning = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseCleaning: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Maintenance and Repairs ($)"
+                      value={formatNumber(editingDeal.expenseMaintenanceRepairs || '')}
+                      error={editErrors.expenseMaintenanceRepairs}
+                      ref={(el) => (editErrorRefs.current.expenseMaintenanceRepairs = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseMaintenanceRepairs: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Utilities and Expenses($)"
+                      value={formatNumber(editingDeal.expenseUtilities || '')}
+                      error={editErrors.expenseUtilities}
+                      ref={(el) => (editErrorRefs.current.expenseUtilities = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseUtilities: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="HOA Fees ($) — HOA Monthly Fee × 12"
+                      value={formatNumber(editingDeal.expenseHOAFees || '')}
+                      error={editErrors.expenseHOAFees}
+                      ref={(el) => (editErrorRefs.current.expenseHOAFees = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseHOAFees: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Sales Tax ($)"
+                      value={formatNumber(editingDeal.expenseSalesTax || '')}
+                      error={editErrors.expenseSalesTax}
+                      ref={(el) => (editErrorRefs.current.expenseSalesTax = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseSalesTax: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Advertising ($)"
+                      value={formatNumber(editingDeal.expenseAdvertising || '')}
+                      error={editErrors.expenseAdvertising}
+                      ref={(el) => (editErrorRefs.current.expenseAdvertising = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseAdvertising: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <NumericInput
+                      label="Misc Expense ($)"
+                      value={formatNumber(editingDeal.expenseMisc || '')}
+                      error={editErrors.expenseMisc}
+                      ref={(el) => (editErrorRefs.current.expenseMisc = el)}
+                      onChange={(e) => setEditingDeal((prev) => ({ ...prev, expenseMisc: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))}
+                    />
+                    <div className="flex flex-col justify-end">
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3">
+                        <div className="text-xs text-text-secondary font-medium mb-1">Total Annual Expenses</div>
+                        <div className="text-base font-semibold text-primary">
+                          ${Number(
+                            (Number(editingDeal.expensePrincipalInterest) || 0) +
+                            (Number(editingDeal.expensePropertyTaxes) || 0) +
+                            (Number(editingDeal.expenseInsurance) || 0) +
+                            (Number(editingDeal.expenseManagement) || 0) +
+                            (Number(editingDeal.expenseOTAFees) || 0) +
+                            (Number(editingDeal.expenseCleaning) || 0) +
+                            (Number(editingDeal.expenseMaintenanceRepairs) || 0) +
+                            (Number(editingDeal.expenseUtilities) || 0) +
+                            (Number(editingDeal.expenseHOAFees) || 0) +
+                            (Number(editingDeal.expenseSalesTax) || 0) +
+                            (Number(editingDeal.expenseAdvertising) || 0) +
+                            (Number(editingDeal.expenseMisc) || 0)
+                          ).toLocaleString('en-US')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </AccordionSection>
 
-              {/* Market Analysis */}
-              <section className="space-y-6">
-                <h3 className="text-lg font-semibold text-text-primary">Market Analysis and Investment Analyzer Worksheet</h3>
-                <Input label="Worksheet / Analysis Link" type="url" value={underwritingDeal.marketAnalysisLink || ''} error={editErrors.marketAnalysisLink} ref={(el) => (editErrorRefs.current.marketAnalysisLink = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, marketAnalysisLink: e.target.value }))} />
-
+              {/* ═══ Market Analysis Accordion ═══ */}
+              <AccordionSection title="Market Analysis and Investment Analyzer Worksheet" isOpen={openAccordions.marketAnalysis} onToggle={() => toggleAccordion('marketAnalysis')}>
+                <Input label="Worksheet / Analysis Link" type="url" value={editingDeal.marketAnalysisLink || ''} error={editErrors.marketAnalysisLink} ref={(el) => (editErrorRefs.current.marketAnalysisLink = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, marketAnalysisLink: e.target.value }))} />
                 {/* 50-50 Partnership Opportunity */}
                 <div className="bg-surface border border-border-subtle rounded-lg p-4">
                   <label className="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" checked={!!underwritingDeal.fiftyFiftyPartner} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, fiftyFiftyPartner: e.target.checked }))} className="mt-1 w-5 h-5 accent-accent" />
+                    <input type="checkbox" checked={!!editingDeal.fiftyFiftyPartner} onChange={(e) => setEditingDeal((prev) => ({ ...prev, fiftyFiftyPartner: e.target.checked }))} className="mt-1 w-5 h-5 accent-accent" />
                     <div>
                       <div className="text-base font-semibold text-text-primary">50-50 Partnership Opportunity</div>
                       <div className="text-sm text-text-secondary mt-0.5">Mark this property as a potential 50-50 partnership.</div>
                     </div>
                   </label>
-
-                  {underwritingDeal.fiftyFiftyPartner && (
+                  {editingDeal.fiftyFiftyPartner && (
                     <div className="mt-4 ml-8 flex items-end gap-4">
                       <div className="w-80">
                         <label className="block text-sm font-medium text-text-secondary mb-1">
@@ -2064,22 +2149,21 @@ const PropertyManagement = () => {
                         <input
                           type="text"
                           inputMode="numeric"
-                          value={underwritingDeal.customJvValues ? Number(underwritingDeal.customJvValues).toLocaleString('en-US') : ''}
+                          value={editingDeal.customJvValues ? Number(editingDeal.customJvValues).toLocaleString('en-US') : ''}
                           onChange={(e) => {
                             const raw = e.target.value.replace(/[^0-9]/g, '');
-                            setUnderwritingDeal((prev) => ({ ...prev, customJvValues: raw }));
+                            setEditingDeal((prev) => ({ ...prev, customJvValues: raw }));
                           }}
                           className="w-full px-3 py-2 bg-app border border-border-subtle rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                           placeholder="e.g. 60,000"
                         />
                       </div>
-
                       <label className="flex items-center gap-2 cursor-pointer mb-1">
                         <input
                           type="checkbox"
-                          checked={!!underwritingDeal.costsIncluded}
+                          checked={!!editingDeal.costsIncluded}
                           onChange={(e) =>
-                            setUnderwritingDeal((prev) => ({
+                            setEditingDeal((prev) => ({
                               ...prev,
                               costsIncluded: e.target.checked,
                             }))
@@ -2093,49 +2177,112 @@ const PropertyManagement = () => {
                     </div>
                   )}
                 </div>
-              </section>
+              </AccordionSection>
 
-              {/* Top Properties / Comps */}
-              <section className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-text-primary">Top 10 Properties Listing (Airbnb)</h3>
-                  <p className="text-sm text-text-secondary">The following are examples of the top properties in the area to show <span className="font-semibold">Potential Gross Revenue</span> if you could get this property to the top of the market.</p>
-                  <p className="text-xs text-text-secondary italic">This DOES NOT suggest that this property in its current condition will produce this level of revenue.</p>
-                </div>
+              {/* ═══ Top 10 Properties Accordion ═══ */}
+              <AccordionSection title="Top Properties Listing (Airbnb)" isOpen={openAccordions.top10Properties} onToggle={() => toggleAccordion('top10Properties')}>
+                <p className="text-sm text-text-secondary">The following are examples of the top properties in the area to show <span className="font-semibold">Potential Gross Revenue</span> if you could get this property to the top of the market.</p>
+                <p className="text-xs text-text-secondary italic">This DOES NOT suggest that this property in its current condition will produce this level of revenue.</p>
                 <div className="space-y-6">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                    <div key={num} className="space-y-4 border border-border-subtle rounded-lg overflow-hidden">
-                      <h4 className="font-semibold text-white bg-primary px-4 py-2">Property {num}</h4>
+                  {Array.from({ length: topPropCount }, (_, i) => i + 1).map((num) => (
+                    <div key={num} className="space-y-4 border border-blue-100 rounded-lg overflow-hidden bg-white">
+                      <h4 className="font-semibold text-primary bg-blue-50 border-b border-blue-100 px-4 py-2 flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-white text-blue-600 text-xs font-bold ring-1 ring-blue-200">{num}</span>
+                          Property {num}
+                        </span>
+                        {num === topPropCount && num > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDeal((prev) => ({
+                                ...prev,
+                                [`comp_${num}_title`]: '',
+                                [`comp_${num}_dailyRate`]: '',
+                                [`comp_${num}_occupancy`]: '',
+                                [`comp_${num}_link`]: '',
+                                [`comp_${num}_grossRevenue`]: '',
+                              }));
+                              setTopPropCount((c) => Math.max(1, c - 1));
+                            }}
+                            className="text-xs font-medium text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </h4>
                       <div className="px-4 pb-4 space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <Input label="Property Title" value={underwritingDeal[`comp_${num}_title`] || ''} error={editErrors[`comp_${num}_title`]} ref={(el) => (editErrorRefs.current[`comp_${num}_title`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_title`]: e.target.value }))} />
-                          <NumericInput label="Daily Rate ($)" value={formatNumber(underwritingDeal[`comp_${num}_dailyRate`] || '')} error={editErrors[`comp_${num}_dailyRate`]} ref={(el) => (editErrorRefs.current[`comp_${num}_dailyRate`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_dailyRate`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-                          <NumericInput label="Occupancy (%)" value={underwritingDeal[`comp_${num}_occupancy`] || ''} error={editErrors[`comp_${num}_occupancy`]} ref={(el) => (editErrorRefs.current[`comp_${num}_occupancy`] = el)} onChange={(e) => { let val = e.target.value.replace(/[^0-9.]/g, ''); if (val !== '' && Number(val) > 100) val = '100'; if (val !== '' && Number(val) < 0) val = '0'; setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_occupancy`]: val })); }} />
+                          <Input label="Property Title" value={editingDeal[`comp_${num}_title`] || ''} error={editErrors[`comp_${num}_title`]} ref={(el) => (editErrorRefs.current[`comp_${num}_title`] = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, [`comp_${num}_title`]: e.target.value }))} />
+                          <NumericInput label="Daily Rate ($)" value={formatNumber(editingDeal[`comp_${num}_dailyRate`] || '')} error={editErrors[`comp_${num}_dailyRate`]} ref={(el) => (editErrorRefs.current[`comp_${num}_dailyRate`] = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, [`comp_${num}_dailyRate`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
+                          <NumericInput label="Occupancy (%)" value={editingDeal[`comp_${num}_occupancy`] || ''} error={editErrors[`comp_${num}_occupancy`]} ref={(el) => (editErrorRefs.current[`comp_${num}_occupancy`] = el)} onChange={(e) => { let val = e.target.value.replace(/[^0-9.]/g, ''); if (val !== '' && Number(val) > 100) val = '100'; if (val !== '' && Number(val) < 0) val = '0'; setEditingDeal((prev) => ({ ...prev, [`comp_${num}_occupancy`]: val })); }} />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Input label="Airbnb Listing Link" type="url" value={underwritingDeal[`comp_${num}_link`] || ''} error={editErrors[`comp_${num}_link`]} ref={(el) => (editErrorRefs.current[`comp_${num}_link`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_link`]: e.target.value }))} />
-                          <NumericInput label="Revenue ($)" value={formatNumber(underwritingDeal[`comp_${num}_grossRevenue`] || '')} error={editErrors[`comp_${num}_grossRevenue`]} ref={(el) => (editErrorRefs.current[`comp_${num}_revenue`] = el)} onChange={(e) => setUnderwritingDeal((prev) => ({ ...prev, [`comp_${num}_grossRevenue`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
-
+                          <Input label="Airbnb Listing Link" type="url" value={editingDeal[`comp_${num}_link`] || ''} error={editErrors[`comp_${num}_link`]} ref={(el) => (editErrorRefs.current[`comp_${num}_link`] = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, [`comp_${num}_link`]: e.target.value }))} />
+                          <NumericInput label="Revenue ($)" value={formatNumber(editingDeal[`comp_${num}_grossRevenue`] || '')} error={editErrors[`comp_${num}_grossRevenue`]} ref={(el) => (editErrorRefs.current[`comp_${num}_revenue`] = el)} onChange={(e) => setEditingDeal((prev) => ({ ...prev, [`comp_${num}_grossRevenue`]: unformatNumber(e.target.value).replace(/[^0-9]/g, '') }))} />
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              </section>
-
-              {/* Underwriting Images */}
-              <section className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-text-primary">Underwriting Images</h3>
-                  <p className="text-sm text-text-secondary">Upload supporting screenshots, spreadsheets, analyses, or reference images used during underwriting.</p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setTopPropCount((c) => c + 1)}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 px-3 py-2 rounded-lg border border-dashed border-blue-300 hover:bg-blue-50 transition-colors"
+                  >
+                    <span className="text-base leading-none">+</span> Add Property
+                  </button>
                 </div>
-                <FileUpload accept="image/*" multiple value={underwritingDeal.underwritingImages || []} onChange={(urls) => setUnderwritingDeal((prev) => ({ ...prev, underwritingImages: urls }))} error={editErrors?.underwritingImages} ref={(el) => (editErrorRefs.current.underwritingImages = el)} />
-              </section>
+              </AccordionSection>
+
+              {/* ═══ Underwriting Images Accordion ═══ */}
+              <AccordionSection title="Underwriting Images" isOpen={openAccordions.underwritingImages} onToggle={() => toggleAccordion('underwritingImages')}>
+                <p className="text-sm text-text-secondary">Upload supporting screenshots, spreadsheets, analyses, or reference images used during underwriting.</p>
+                <FileUpload accept="image/*" multiple value={editingDeal.underwritingImages || []} onChange={(urls) => setEditingDeal((prev) => ({ ...prev, underwritingImages: urls }))} error={editErrors?.underwritingImages} ref={(el) => (editErrorRefs.current.underwritingImages = el)} />
+              </AccordionSection>
+
+              {Object.keys(editErrors).length > 0 && (
+                <div className="rounded-xl border border-red-200 bg-red-50/60 p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    <p className="font-semibold text-red-700 text-sm">Please fix the following errors:</p>
+                  </div>
+                  <ul className="space-y-1.5 ml-7">
+                    {Object.entries(editErrors).map(([field, message]) => (
+                      <li key={field}>
+                        <button
+                          type="button"
+                          className="text-sm text-red-600 hover:text-red-800 hover:underline text-left"
+                          onClick={() => { const ref = editErrorRefs.current[field]; ref?.scrollIntoView({ behavior: 'smooth', block: 'center' }); ref?.focus?.(); }}
+                        >
+                          <span className="font-medium">{fieldToLabel(field)}:</span> {message}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
-            <div className="mt-6 border-t border-border-subtle pt-6 flex justify-end gap-3">
-              <Button variant="secondary" onClick={() => setUnderwritingDeal(null)}>Cancel</Button>
-              <Button variant="primary" onClick={saveUnderwriting} loading={updateMutation.isPending}>Save Underwriting</Button>
+            {/* Footer */}
+            <div className="bg-white border-t border-border-subtle px-6 py-3.5 flex items-center justify-between gap-3 shrink-0">
+              <span className="text-xs text-text-secondary">
+                {Object.keys(editErrors).length > 0 && (
+                  <span className="inline-flex items-center gap-1.5 text-red-600 font-medium">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    {Object.keys(editErrors).length} error{Object.keys(editErrors).length > 1 ? 's' : ''} remaining
+                  </span>
+                )}
+              </span>
+              <div className="flex gap-3">
+                <Button variant="secondary" onClick={() => setEditingDeal(null)}>Cancel</Button>
+                <Button variant="primary" onClick={saveManageProperty} loading={updateMutation.isPending}>Save Changes</Button>
+              </div>
             </div>
           </div>
         </Modal>

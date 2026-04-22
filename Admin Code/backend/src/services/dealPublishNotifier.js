@@ -16,7 +16,7 @@ const { sendEmail } = require('./emailService'); // ← your existing email send
 const { createNotification } = require('./notificationService');
 
 // Base URL for deal links (set via env var, e.g. https://yourapp.com)
-const APP_BASE_URL = process.env.SUBMITTER_URL || process.env.CLIENT_URL;
+const APP_BASE_URL = process.env.CLIENT_URL;
 
 // ── Blocked email addresses — notifications will never be sent to these ──────
 // Add more emails to this list as needed.
@@ -135,7 +135,7 @@ async function notifyMatchingUsers(deal, req) {
             });
     
 	  // Save a notification record for this matched user
-		        await createNotification('new_property', deal.id, {
+		 await createNotification('new_property', deal.id, {
               action_performer_id: deal.submitterEmail,
               notify: false,
               admin_email: userId,

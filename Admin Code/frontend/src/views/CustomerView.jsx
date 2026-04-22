@@ -675,7 +675,7 @@ const CustomerView = () => {
         <>
 
           {/* ALL OTHER PROPERTIES */}
-          <div className={`grid ${gridCols} gap-5 mb-8`}>
+          <div className={`grid ${gridCols} gap-5 mb-8 `}>
             {paginatedNonFavoritedDeals.map((deal) => (
               <DealCard
                 key={deal.id}
@@ -694,7 +694,7 @@ const CustomerView = () => {
 
           {/* PAGINATION (only for non-favorites) */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center space-x-2">
+            <div className="flex justify-center items-center space-x-2 next-steps">
               <Button
                 size="sm"
                 variant="outline"
