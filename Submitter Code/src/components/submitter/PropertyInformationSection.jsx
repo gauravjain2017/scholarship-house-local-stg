@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import NumericInput from '../NumericInput';
 import Select from '../Select';
 import Textarea from '../Textarea';
@@ -22,8 +23,24 @@ const PropertyInformationSection = ({
   errors,
   errorRefs,
 }) => {
+  // Hidden auto field: on the Add Property page, expiry_date is always set to
+  // today + 20 days so it is saved with the submission. This section is only
+  // rendered in the add/submit flow (never the edit-property modals).
+  useEffect(() => {
+    if (formData.expiry_date) return; // keep an existing value (e.g. resumed draft)
+    const d = new Date();
+    d.setDate(d.getDate() + 20);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    setFormData((prev) => ({ ...prev, expiry_date: `${mm}/${dd}/${yyyy}` }));
+  }, [formData.expiry_date, setFormData]);
+
   return (
     <div className="mb-12">
+      {/* Hidden expiry_date — auto-set to today + 20 days, saved on submit */}
+      <input type="hidden" name="expiry_date" value={formData.expiry_date ?? ''} readOnly />
+
       <h2 className="text-2xl font-semibold text-primary mb-2">
         Property Information
       </h2>
@@ -34,7 +51,7 @@ const PropertyInformationSection = ({
       {/* Property Type (Bullet Choices) */}
       <div className="mb-4">
         {/* Submitter Relationship + Property Expiry Date */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols gap-4 mb-4">
           <div>
             <Select
               label={
@@ -49,7 +66,7 @@ const PropertyInformationSection = ({
               options={[
                 {
                   value: 'TEAM_MEMBER',
-                  label: 'I am a Scholarship House team member',
+                  label: 'I am a CFS team member',
                 },
                 {
                   value: 'REALTOR_LISTING_OWNER',
@@ -61,17 +78,17 @@ const PropertyInformationSection = ({
                 },
                 {
                   value: 'WHOLESALER_HOLDS_CONTRACT',
-                  label: 'I am a wholesaler and I hold the contract',
+                  label: 'I am a wholesaler and I have the contrac',
                 },
                 {
                   value: 'WHOLESALER_NO_CONTRACT',
                   label:
-                    'I am a wholesaler, but I don\u2019t hold the contract',
+                    'I am a wholesaler, but I don\u2019t have the contract',
                 },
                 {
                   value: 'REAL_ESTATE_PROFESSIONAL',
                   label:
-                    'I am a real estate professional, and this is my client',
+                    'I am a real estate professional and this is my client',
                 },
                 {
                   value: 'BIRDDOGGER',
@@ -81,32 +98,7 @@ const PropertyInformationSection = ({
               error={errors.submitterRelationship}
             />
           </div>
-          <div>
-            <NumericInput
-              label={
-                <span className="text-base md:text-lg font-semibold">
-                  Year Built <span className="text-red-500">*</span>
-                </span>
-              }
-              name="yearBuilt"
-              type="text"
-              inputMode="numeric"
-              value={formData.yearBuilt ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  yearBuilt: unformatNumber(e.target.value).replace(
-                    /[^0-9]/g,
-                    ''
-                  ),
-                }))
-              }
-              required
-              error={errors.yearBuilt}
-              placeholder="e.g., 2005"
-              ref={(el) => (errorRefs.current.yearBuilt = el)}
-            />
-          </div>
+          
         </div>
 
         <label className="block text-base md:text-lg font-semibold text-text-primary mb-3">
@@ -191,24 +183,11 @@ const PropertyInformationSection = ({
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-           <div>
-            <DateInput
-              label={
-                <span className="text-base md:text-lg font-semibold">
-                  Property Expiry Date{' '}
-                  <span className="text-red-500">*</span>
-                </span>
-              }
-              name="expiry_date"
-              value={formData.expiry_date ?? ''}
-              onChange={handleChange}
-              error={errors.expiry_date}
-              ref={(el) => (errorRefs.current.expiry_date = el)}
-            />
-          </div>
-          <div>
-            <NumericInput
+       
+	   <div className="grid grid-cols-2 gap-4">
+          
+		  
+		    <NumericInput
               label={
                 <span className="text-base md:text-lg font-semibold">
                   Square Footage <span className="text-red-500">*</span>
@@ -232,15 +211,92 @@ const PropertyInformationSection = ({
               placeholder="e.g., 2,200"
               ref={(el) => (errorRefs.current.squareFootage = el)}
             />
-          </div>
+		  
+            <NumericInput
+              label={
+                <span className="text-base md:text-lg font-semibold">
+                  Year Built <span className="text-red-500">*</span>
+                </span>
+              }
+              name="yearBuilt"
+              type="text"
+              inputMode="numeric"
+              value={formData.yearBuilt ?? ''}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  yearBuilt: unformatNumber(e.target.value).replace(
+                    /[^0-9]/g,
+                    ''
+                  ),
+                }))
+              }
+              required
+              error={errors.yearBuilt}
+              placeholder="e.g., 2005"
+              ref={(el) => (errorRefs.current.yearBuilt = el)}
+            />
+    
+          
+		  
         </div>
+      </div>
+
+      {/* HOA Information */}
+      <div className="mb-4">
+        <Select
+          label={
+            <span className="text-base md:text-lg font-semibold">
+              Is This Property In An HOA?
+            </span>
+          }
+          name="isHOA"
+          value={formData.isHOA ? 'yes' : 'no'}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              isHOA: e.target.value === 'yes',
+            }))
+          }
+          options={[
+            { value: 'no', label: 'No' },
+            { value: 'yes', label: 'Yes' },
+          ]}
+        />
+
+        {formData.isHOA && (
+          <div className="mt-3">
+            <NumericInput
+              label={
+                <span>
+                  HOA Monthly Fee ($) <span className="text-red-500">*</span>
+                </span>
+              }
+              name="hoaMonthlyFee"
+              type="text"
+              inputMode="numeric"
+              value={formatNumber(formData.hoaMonthlyFee ?? '')}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  hoaMonthlyFee: unformatNumber(e.target.value).replace(
+                    /[^0-9]/g,
+                    ''
+                  ),
+                }))
+              }
+              error={errors.hoaMonthlyFee}
+              ref={(el) => (errorRefs.current.hoaMonthlyFee = el)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Description */}
       <Textarea
         label={
           <span className="text-base md:text-lg font-semibold">
-            Description
+            Listing Description
           </span>
         }
         name="description"
@@ -252,6 +308,131 @@ const PropertyInformationSection = ({
         placeholder="Describe the property..."
         ref={(el) => (errorRefs.current.description = el)}
       />
+
+
+      {/* Story */}
+      <Textarea
+        label={
+          <span className="text-base md:text-lg font-semibold">
+            Seller's Intentions
+          </span>
+        }
+        name="story"
+        value={formData.story ?? ''}
+        onChange={handleChange}
+        error={errors.story}
+        rows={6}
+        placeholder="Why is the seller selling this property at this time? What are their goals and motivations?"
+        ref={(el) => (errorRefs.current.story = el)}
+      />
+      <p className="text-sm text-text-secondary -mt-2 mb-4">
+        Why is the seller selling this property at this time? What are their
+        goals and motivations?
+      </p>
+
+      <hr className="my-8 border-border" />
+
+      {/* Property's Main Point of Contact */}
+      <div className="mb-6">
+        <h3 className="text-base md:text-lg font-semibold text-text-primary mb-4">
+          Property's Main Point of Contact
+        </h3>
+        <div className="border border-border rounded-lg p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="contactName"
+                value={formData.contactName ?? ''}
+                onChange={handleChange}
+                placeholder="Full name"
+                ref={(el) => (errorRefs.current.contactName = el)}
+                className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent ${errors.contactName ? 'border-red-500' : 'border-border'}`}
+              />
+              {errors.contactName && (
+                <p className="text-xs text-red-500 mt-1">{errors.contactName}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                name="contactPhone"
+                inputMode="numeric"
+                value={formData.contactPhone ?? ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    contactPhone: e.target.value.replace(/[^0-9]/g, ''),
+                  }))
+                }
+                placeholder="e.g., 5555555555"
+                ref={(el) => (errorRefs.current.contactPhone = el)}
+                className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent ${errors.contactPhone ? 'border-red-500' : 'border-border'}`}
+              />
+              {errors.contactPhone && (
+                <p className="text-xs text-red-500 mt-1">{errors.contactPhone}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-1">
+                Relation to Property <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="contactRelation"
+                value={formData.contactRelation ?? ''}
+                onChange={handleChange}
+                placeholder="e.g., Owner, Agent, Wholesaler"
+                ref={(el) => (errorRefs.current.contactRelation = el)}
+                className={`w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent ${errors.contactRelation ? 'border-red-500' : 'border-border'}`}
+              />
+              {errors.contactRelation && (
+                <p className="text-xs text-red-500 mt-1">{errors.contactRelation}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Source Link */}
+      <div className="mb-6">
+        <label className="block text-base md:text-lg font-semibold text-text-primary mb-1">
+          Source Link
+        </label>
+        <p className="text-sm text-text-secondary mb-2">
+          Paste the URL to the original listing site here.
+        </p>
+        <input
+          type="url"
+          name="sourceLink"
+          value={formData.sourceLink ?? ''}
+          onChange={handleChange}
+          placeholder="https://..."
+          className="w-full border border-accent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+        {errors.sourceLink && (
+          <p className="text-xs text-red-500 mt-1">{errors.sourceLink}</p>
+        )}
+      </div>
+
+      {/* About Your Listing Expiration */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 className="text-sm font-semibold text-blue-700 mb-1 flex items-center gap-2">
+          <span>🗓️</span> About Your Listing Expiration
+        </h4>
+        <p className="text-sm text-blue-700">
+          Your property listing will expire 20 days from the date of submission. You will be
+          notified 3 days before expiration so you can review the property details and make
+          sure everything is still accurate and up to date before resubmitting.
+        </p>
+      </div>
+
     </div>
   );
 };

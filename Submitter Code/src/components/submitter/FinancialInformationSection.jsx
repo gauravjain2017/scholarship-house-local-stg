@@ -1,9 +1,13 @@
 import Input from '../Input';
-import NumericInput from '../NumericInput';
 import Select from '../Select';
 import Textarea from '../Textarea';
 import DateInput from '../DateInput';
 import { formatNumber, unformatNumber, sanitizePercent } from '../../utils/format';
+
+const BALLOON_YEARS = Array.from({ length: 30 }, (_, i) => {
+  const n = i + 1;
+  return { value: `${n}`, label: `${n} Year${n > 1 ? 's' : ''}` };
+});
 
 const FinancialInformationSection = ({
   formData,
@@ -13,419 +17,257 @@ const FinancialInformationSection = ({
   errorRefs,
   isCreativeFinancing,
 }) => {
+  // ── Render helpers (JSX factories that close over formData/setFormData) ──
+  const setField = (name, value) =>
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+  const moneyField = (name, label) => (
+    <Input
+      label={label}
+      name={name}
+      type="text"
+      inputMode="numeric"
+      value={formatNumber(formData[name] ?? '')}
+      onChange={(e) =>
+        setField(name, unformatNumber(e.target.value).replace(/[^0-9]/g, ''))
+      }
+      error={errors[name]}
+      ref={(el) => (errorRefs.current[name] = el)}
+    />
+  );
+
+  const percentField = (name, label) => (
+    <Input
+      label={label}
+      name={name}
+      type="text"
+      inputMode="decimal"
+      value={formData[name] ?? ''}
+      onChange={(e) => setField(name, sanitizePercent(e.target.value))}
+      error={errors[name]}
+      ref={(el) => (errorRefs.current[name] = el)}
+    />
+  );
+
+  const dateField = (name, label) => (
+    <DateInput
+      label={label}
+      name={name}
+      value={formData[name] ?? ''}
+      onChange={(e) => setField(name, e.target.value)}
+      error={errors[name]}
+      placeholder="Select date"
+    />
+  );
+
+  const yesNo = (name, label) => (
+    <div className="mb-4">
+      <label className="block text-base md:text-lg font-semibold text-text-primary mb-2">
+        {label}
+      </label>
+      <div className="flex items-center gap-6">
+        {[
+          ['yes', 'Yes'],
+          ['no', 'No'],
+        ].map(([val, lbl]) => (
+          <label key={val} className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name={name}
+              value={val}
+              checked={formData[name] === val}
+              onChange={() => setField(name, val)}
+              className="h-4 w-4 text-accent focus:ring-accent"
+            />
+            <span className="text-sm text-text-primary">{lbl}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="mb-6">
       <h2 className="text-2xl font-bold mb-4">Financial Information</h2>
 
-      {/* Primary Deal Terms */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <Input
-          label={
-            <span>
-              Price <span className="text-accent">($)</span>{' '}
-              <span className="text-red-500">*</span>
-            </span>
-          }
-          name="price"
-          type="text"
-          inputMode="numeric"
-          value={formatNumber(formData.price ?? '')}
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              price: unformatNumber(e.target.value).replace(
-                /[^0-9]/g,
-                ''
-              ),
-            }))
-          }
-          required
-          error={errors.price}
-          placeholder="e.g., 500,000"
-        />
-
-        <Select
-          label="Type of Financing"
-          name="financingType"
-          value={formData.financingType ?? ''}
-          onChange={handleChange}
-          required
-          options={[
-            { value: 'traditional', label: 'Traditional Financing' },
-            {
-              value: 'subject-to',
-              label: 'Creative Financing (Subject-to)',
-            },
-            { value: 'hybrid', label: 'Creative Financing (Hybrid)' },
-            {
-              value: 'seller',
-              label: 'Creative Financing (Seller Financing)',
-            },
-            { value: 'cash', label: 'Cash Only' },
-          ]}
-          error={errors.financingType}
-        />
-
-        <DateInput
-          label="Expected Close of Escrow"
-          name="expectedCloseDate"
-          value={formData.expectedCloseDate ?? ''}
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              expectedCloseDate: e.target.value,
-            }))
-          }
-          placeholder="Select date"
-        />
-      </div>
-
-      {/* Transactional Details */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          label="Earnest Money Deposit (EMD) ($)"
-          name="emd"
-          type="text"
-          inputMode="numeric"
-          value={formatNumber(formData.emd ?? '')}
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              emd: unformatNumber(e.target.value).replace(
-                /[^0-9]/g,
-                ''
-              ),
-            }))
-          }
-          error={errors.emd}
-          ref={(el) => (errorRefs.current.emd = el)}
-        />
-
-        <Input
-          label="Down Payment (Excluding closing costs) ($)"
-          name="downPayment"
-          type="text"
-          inputMode="numeric"
-          value={formatNumber(formData.downPayment ?? '')}
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              downPayment: unformatNumber(e.target.value).replace(
-                /[^0-9]/g,
-                ''
-              ),
-            }))
-          }
-          error={errors.downPayment}
-          ref={(el) => (errorRefs.current.downPayment = el)}
-        />
-      </div>
-
-      {/* Additional Financial Info */}
-      <Textarea
+      {/* Type of Financing — FIRST */}
+      <Select
         label={
           <span className="text-base md:text-lg font-semibold">
-            Additional Financial Information
+            Type of Financing
           </span>
         }
-        name="financialInfo"
-        value={formData.financialInfo ?? ''}
+        name="financingType"
+        value={formData.financingType ?? ''}
         onChange={handleChange}
-        error={errors.financialInfo}
-        rows={6}
-        placeholder="Why is the Seller selling this property?"
-        ref={(el) => (errorRefs.current.financialInfo = el)}
+        required
+        options={[
+          { value: 'traditional', label: 'Traditional Financing' },
+          { value: 'creative', label: 'Creative Financing' },
+        ]}
+        error={errors.financingType}
       />
 
-      {/* Subject-to Loan Information */}
+      {/* Purchase Price — SECOND */}
+      <Input
+        label={
+          <span className="text-base md:text-lg font-semibold">
+            Purchase Price <span className="text-accent">($)</span>{' '}
+            <span className="text-red-500">*</span>
+          </span>
+        }
+        name="price"
+        type="text"
+        inputMode="numeric"
+        value={formatNumber(formData.price ?? '')}
+        onChange={(e) =>
+          setField('price', unformatNumber(e.target.value).replace(/[^0-9]/g, ''))
+        }
+        required
+        error={errors.price}
+        placeholder="e.g., 500,000"
+        className="w-full mt-4"
+      />
+
+      {/* TRADITIONAL: Additional Financial Information only */}
+      {!isCreativeFinancing && (
+        <div className="mt-6">
+          <Textarea
+            label={
+              <span className="text-base md:text-lg font-semibold">
+                Additional Financial Information
+              </span>
+            }
+            name="financialInfo"
+            value={formData.financialInfo ?? ''}
+            onChange={handleChange}
+            error={errors.financialInfo}
+            rows={6}
+            placeholder="Include any relevant financial details, notes, or context about this transaction..."
+            ref={(el) => (errorRefs.current.financialInfo = el)}
+          />
+        </div>
+      )}
+
+      {/* CREATIVE: Full conditional flow */}
       {isCreativeFinancing && (
         <div className="mt-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
-            Subject-to Loan Information
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-            <NumericInput
-              label={
-                <span>
-                  Loan Balance <span className="text-accent">($)</span>
-                </span>
-              }
-              name="subjLoanBalance"
-              type="text"
-              inputMode="numeric"
-              value={formatNumber(formData.subjLoanBalance ?? '')}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  subjLoanBalance: unformatNumber(
-                    e.target.value
-                  ).replace(/[^0-9]/g, ''),
-                }))
-              }
-              error={errors.subjLoanBalance}
-              ref={(el) => (errorRefs.current.subjLoanBalance = el)}
-            />
-
-            <NumericInput
-              label="Interest Rate (%)"
-              name="subjInterestRate"
-              type="text"
-              inputMode="decimal"
-              value={formData.subjInterestRate ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  subjInterestRate: sanitizePercent(e.target.value),
-                }))
-              }
-              error={errors.subjInterestRate}
-              ref={(el) => (errorRefs.current.subjInterestRate = el)}
-            />
-
-            <DateInput
-              label="Loan Maturity Date"
-              name="subjLoanMaturity"
-              value={formData.subjLoanMaturity ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  subjLoanMaturity: e.target.value,
-                }))
-              }
-              error={errors.subjLoanMaturity}
-              placeholder="Select date"
-            />
+          {/* Expected Close of Escrow + EMD + Down Payment + Assignment Fee */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {dateField('expectedCloseDate', 'Expected Close of Escrow')}
+            {moneyField('emd', 'Earnest Money Deposit (EMD) ($)')}
+            {moneyField('downPayment', 'Down Payment (Excluding closing costs) ($)')}
+            {moneyField('assignmentFee', 'Assignment Fee ($)')}
           </div>
 
-          <Input
+          <hr className="my-8 border-border" />
+
+          {/* PRIMARY MORTGAGE */}
+          {yesNo('hasPrimaryMortgage', 'Is There a Primary Mortgage?')} 
+          {formData.hasPrimaryMortgage === 'yes' && (
+            <div className="border border-border rounded-lg p-4 mb-4">
+              <p className="text-base font-semibold text-text-primary mb-4">
+                Primary Mortgage Details
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                {moneyField('primaryLoanBalance', 'Loan Balance ($)')}
+                {percentField('primaryInterestRate', 'Interest Rate (%)')}
+                {dateField('primaryMaturityDate', 'Maturity Date')}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {moneyField(
+                  'primaryPrincipalInterest',
+                  'Combined Principal & Interest ($)'
+                )}
+                {moneyField('primaryTaxesInsurance', 'Taxes & Insurance ($)')}
+              </div>
+            </div>
+          )}
+
+          <hr className="my-8 border-border" />
+
+          {/* SECOND MORTGAGE */}
+          {yesNo('hasSecondMortgage', 'Is There a Second Mortgage?')}
+          {formData.hasSecondMortgage === 'yes' && (
+            <div className="border border-border rounded-lg p-4 mb-4">
+              <p className="text-base font-semibold text-text-primary mb-4">
+                Second Mortgage Details
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                {moneyField('secondLoanBalance', 'Loan Balance ($)')}
+                {percentField('secondInterestRate', 'Interest Rate (%)')}
+                {dateField('secondMaturityDate', 'Maturity Date')}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {moneyField(
+                  'secondPrincipalInterest',
+                  'Combined Principal & Interest ($)'
+                )}
+                {moneyField('secondTaxesInsurance', 'Taxes & Insurance ($)')}
+              </div>
+            </div>
+          )}
+
+          <hr className="my-8 border-border" />
+
+          {/* SELLER EQUITY */}
+          {yesNo('hasSellerEquity', 'Is There Any Seller Equity?')}
+          {formData.hasSellerEquity === 'yes' && (
+            <div className="border border-border rounded-lg p-4 mb-4">
+              <p className="text-base font-semibold text-text-primary mb-4">
+                Seller Equity Details
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+                {moneyField('sellerEquityAmount', 'Seller Loan Amount ($)')}
+                {percentField('sellerEquityInterestRate', 'Interest Rate (%)')}
+                {dateField('sellerEquityMaturityDate', 'Maturity Date')}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {moneyField(
+                  'sellerEquityPrincipalInterest',
+                  'Combined Principal & Interest ($)'
+                )}
+                <Select
+                  label="When Is the Balloon Payment Due?"
+                  name="sellerEquityBalloonYears"
+                  value={formData.sellerEquityBalloonYears ?? ''}
+                  onChange={handleChange}
+                  options={BALLOON_YEARS}
+                  error={errors.sellerEquityBalloonYears}
+                />
+              </div>
+            </div>
+          )}
+
+          <hr className="my-8 border-border" />
+
+          {/* Deal Terms (creative only) */}
+          <Textarea
             label={
-              <span>
-                Monthly Principal
-                <span className="text-accent"> ($)</span>
+              <span className="text-base md:text-lg font-semibold">
+                Deal Terms
               </span>
             }
-            name="subjMonthlyPrincipal"
-            type="text"
-            inputMode="numeric"
-            value={formatNumber(formData.subjMonthlyPrincipal ?? '')}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                subjMonthlyPrincipal: unformatNumber(
-                  e.target.value
-                ).replace(/[^0-9]/g, ''),
-              }))
-            }
-            error={errors.subjMonthlyPrincipal}
-            className="w-full"
-            ref={(el) => (errorRefs.current.subjMonthlyPrincipal = el)}
+            name="dealTerms"
+            value={formData.dealTerms ?? ''}
+            onChange={handleChange}
+            error={errors.dealTerms}
+            rows={6}
+            placeholder="Describe the deal terms, financing details, and any nuances of this transaction."
+            ref={(el) => (errorRefs.current.dealTerms = el)}
           />
-          <Input
-            label={
-              <span>
-                Monthly Interest
-                <span className="text-accent"> ($)</span>
+
+          {/* Total Starting Monthly Payment — displayed below Deal Terms */}
+          <div className="mt-6">
+            {moneyField(
+              'totalStartingMonthlyPayment',
+              <span className="text-base md:text-lg font-semibold">
+                Total Starting Monthly Payment ($)
               </span>
-            }
-            name="subjMonthlyInterest"
-            type="text"
-            inputMode="numeric"
-            value={formatNumber(formData.subjMonthlyInterest ?? '')}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                subjMonthlyInterest: unformatNumber(
-                  e.target.value
-                ).replace(/[^0-9]/g, ''),
-              }))
-            }
-            error={errors.subjMonthlyInterest}
-            className="w-full"
-            ref={(el) => (errorRefs.current.subjMonthlyInterest = el)}
-          />
-          <Input
-            label={
-              <span>
-                Monthly Taxes and Insurance
-                <span className="text-accent"> ($)</span>
-              </span>
-            }
-            name="subjMonthlyTaxesInsurance"
-            type="text"
-            inputMode="numeric"
-            value={formatNumber(
-              formData.subjMonthlyTaxesInsurance ?? ''
             )}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                subjMonthlyTaxesInsurance: unformatNumber(
-                  e.target.value
-                ).replace(/[^0-9]/g, ''),
-              }))
-            }
-            error={errors.subjMonthlyTaxesInsurance}
-            className="w-full"
-            ref={(el) =>
-              (errorRefs.current.subjMonthlyTaxesInsurance = el)
-            }
-          />
+          </div>
         </div>
       )}
-
-      {/* Seller Financing Information */}
-      {isCreativeFinancing && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-2">
-            Seller Financing Information
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-            <Input
-              label={
-                <span>
-                  Seller Loan Amount{' '}
-                  <span className="text-accent">($)</span>
-                </span>
-              }
-              name="sellerLoanAmount"
-              type="text"
-              inputMode="numeric"
-              value={formatNumber(formData.sellerLoanAmount ?? '')}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  sellerLoanAmount: unformatNumber(
-                    e.target.value
-                  ).replace(/[^0-9]/g, ''),
-                }))
-              }
-              error={errors.sellerLoanAmount}
-              ref={(el) => (errorRefs.current.sellerLoanAmount = el)}
-            />
-
-            <Input
-              label="Seller Interest Rate (%)"
-              name="sellerInterestRate"
-              type="text"
-              inputMode="decimal"
-              value={formData.sellerInterestRate ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  sellerInterestRate: sanitizePercent(e.target.value),
-                }))
-              }
-              error={errors.sellerInterestRate}
-              ref={(el) => (errorRefs.current.sellerInterestRate = el)}
-            />
-
-            <DateInput
-              label="Loan Maturity Date"
-              name="sellerLoanMaturity"
-              value={formData.sellerLoanMaturity ?? ''}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  sellerLoanMaturity: e.target.value,
-                }))
-              }
-              error={errors.sellerLoanMaturity}
-              placeholder="Select date"
-            />
-          </div>
-
-          <Input
-            label={
-              <span>
-                Monthly Seller Financing Payment{' '}
-                <span className="text-accent">($)</span>
-              </span>
-            }
-            name="sellerMonthlyPayment"
-            type="text"
-            inputMode="numeric"
-            value={formatNumber(formData.sellerMonthlyPayment ?? '')}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                sellerMonthlyPayment: unformatNumber(
-                  e.target.value
-                ).replace(/[^0-9]/g, ''),
-              }))
-            }
-            error={errors.sellerMonthlyPayment}
-            className="w-full"
-            ref={(el) => (errorRefs.current.sellerMonthlyPayment = el)}
-          />
-
-          <Input
-            label={
-              <span className="text-lg font-bold mb-4">
-                Total Monthly Payment{' '}
-                <span className="text-accent">($)</span>
-              </span>
-            }
-            name="totalMonthlyPayment"
-            type="text"
-            inputMode="numeric"
-            value={formatNumber(formData.totalMonthlyPayment ?? '')}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                totalMonthlyPayment: unformatNumber(
-                  e.target.value
-                ).replace(/[^0-9]/g, ''),
-              }))
-            }
-            error={errors.totalMonthlyPayment}
-            className="w-full font-bold"
-            ref={(el) => (errorRefs.current.totalMonthlyPayment = el)}
-          />
-        </div>
-      )}
-
-      {/* HOA Information */}
-      <div className="mt-6">
-        <Select
-          label="Is This Property In An HOA?"
-          name="isHOA"
-          value={formData.isHOA ? 'yes' : 'no'}
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              isHOA: e.target.value === 'yes',
-            }))
-          }
-          options={[
-            { value: 'no', label: 'No' },
-            { value: 'yes', label: 'Yes' },
-          ]}
-        />
-
-        {formData.isHOA && (
-          <div className="mt-3">
-            <NumericInput
-              label="HOA Monthly Fee ($)"
-              name="hoaMonthlyFee"
-              type="text"
-              inputMode="numeric"
-              value={formatNumber(formData.hoaMonthlyFee ?? '')}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  hoaMonthlyFee: unformatNumber(e.target.value).replace(
-                    /[^0-9]/g,
-                    ''
-                  ),
-                }))
-              }
-              ref={(el) => (errorRefs.current.hoaMonthlyFee = el)}
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
 };

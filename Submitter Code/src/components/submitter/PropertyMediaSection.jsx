@@ -18,6 +18,29 @@ const PropertyMediaSection = ({
         <p className="text-text-secondary mb-8">
           Please provide as many detailed photos as you can.
         </p>
+
+        {/* Cover Photo — single image used as the primary display image */}
+        <div className="mb-8">
+          <FileUpload
+            label="Cover Photo"
+            accept="image/*"
+            multiple={false}
+            value={formData.coverPhoto}
+            onChange={(urls) =>
+              setFormData((prev) => ({
+                ...prev,
+                coverPhoto: urls,
+              }))
+            }
+            error={errors.coverPhoto}
+            required
+          />
+          <p className="text-sm text-text-secondary -mt-2">
+            Only 1 image allowed. This image will be used as the primary
+            display image on the website.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <FileUpload
@@ -53,38 +76,36 @@ const PropertyMediaSection = ({
             />
           </div>
 
-          <div className="col-span-full flex justify-center">
-            <div className="w-full max-w-xl">
-              <FileUpload
-                label="Additional Photos"
-                accept="image/*"
-                multiple
-                value={formData.additionalImages}
-                onChange={(urls) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    additionalImages: urls,
-                  }))
-                }
-                error={errors.additionalImages}
-              />
-            </div>
+          <div>
+            <FileUpload
+              label="Additional Photos"
+              accept="image/*"
+              multiple
+              value={formData.additionalImages}
+              onChange={(urls) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  additionalImages: urls,
+                }))
+              }
+              error={errors.additionalImages}
+            />
           </div>
-        </div>
 
-        <div className="mt-6">
-          <FileUpload
-            label="Videos"
-            accept="video/*"
-            multiple
-            value={formData.videos}
-            onChange={(urls) =>
-              setFormData((prev) => ({
-                ...prev,
-                videos: urls,
-              }))
-            }
-          />
+          <div>
+            <FileUpload
+              label="Videos"
+              accept="video/*"
+              multiple
+              value={formData.videos}
+              onChange={(urls) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  videos: urls,
+                }))
+              }
+            />
+          </div>
         </div>
       </div>
 

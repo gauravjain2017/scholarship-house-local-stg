@@ -3,25 +3,48 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { formatPhoneDisplay, unformatPhone } from '../utils/format';
 import { checkEmail, updateProfile, changePassword, getProfile } from '../api/profile';
+import { getAdminUsers } from '../api/admin';
+import { useHasPermission } from '../utils/roles';
 
 /* ====================================================================
- * Profile page — two tabs:
- *   1) Profile Information (edit name / email / phone / address)
- *   2) Change Password
- *
- * Email uniqueness is enforced both client-side (debounced check via
- * /profile/check-email) and server-side (the controller returns 409 if
- * the email is taken).
+ * Profile page — two tabs (each gated by permission):
+ *   1) Profile Information (my_profile.can_update)
+ *   2) Change Password    (my_profile.change_password)
  * ==================================================================== */
-
-const TABS = [
-  { id: 'info', label: 'Profile Information' },
-  { id: 'password', label: 'Change Password' },
-];
 
 const Profile = () => {
   const { user, setUser, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('info');
+  const canUpdate         = useHasPermission('my_profile.can_update');
+  const canChangePassword = useHasPermission('my_profile.change_password');
+
+  const tabs = [
+    canUpdate         && { id: 'info',     label: 'Profile Information' },
+    canChangePassword && { id: 'password', label: 'Change Password' },
+  ].filter(Boolean);
+
+  const [activeTab, setActiveTab] = useState(() => tabs[0]?.id || '');
+
+  // If permissions resolve after mount (e.g. context loads async), sync the default
+  useEffect(() => {
+    setActiveTab((prev) => {
+      if (prev && tabs.some((t) => t.id === prev)) return prev;
+      return tabs[0]?.id || '';
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canUpdate, canChangePassword]);
+
+  if (!canUpdate && !canChangePassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#F5FAFF] to-[#EAF4FF] py-10 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-600">Access Denied</p>
+          <p className="text-sm text-gray-500 mt-1">
+            You do not have permission to view this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F5FAFF] to-[#EAF4FF] py-10 px-4">
@@ -36,38 +59,40 @@ const Profile = () => {
 
         {/* Card */}
         <div className="bg-surface/95 backdrop-blur-sm border rounded-2xl shadow-xl overflow-hidden">
-          {/* Tab bar */}
-          <div className="flex border-b border-gray-200">
-            {TABS.map((tab) => {
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors relative ${
-                    active
-                      ? 'text-[#1E7AC0] bg-[#F5FAFF]'
-                      : 'text-gray-600 hover:text-[#1E7AC0] hover:bg-gray-50'
-                  }`}
-                  aria-selected={active}
-                  role="tab"
-                >
-                  {tab.label}
-                  {active && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#1E7AC0]" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          {/* Tab bar — only rendered when there are multiple tabs */}
+          {tabs.length > 1 && (
+            <div className="flex border-b border-gray-200">
+              {tabs.map((tab) => {
+                const active = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors relative ${
+                      active
+                        ? 'text-[#1E7AC0] bg-[#F5FAFF]'
+                        : 'text-gray-600 hover:text-[#1E7AC0] hover:bg-gray-50'
+                    }`}
+                    aria-selected={active}
+                    role="tab"
+                  >
+                    {tab.label}
+                    {active && (
+                      <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#1E7AC0]" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Tab panels */}
           <div className="p-8">
-            {activeTab === 'info' && (
+            {canUpdate && activeTab === 'info' && (
               <ProfileInfoTab user={user} setUser={setUser} logout={logout} />
             )}
-            {activeTab === 'password' && (
+            {canChangePassword && activeTab === 'password' && (
               <ChangePasswordTab logout={logout} />
             )}
           </div>
@@ -97,11 +122,15 @@ const ProfileInfoTab = ({ user, setUser, logout }) => {
     lastName: '',
     email: '',
     phone: '',
+    acquisitionSpecialist: '',
     address: '',
     city: '',
     state: '',
     zip: '',
   });
+
+  // Acquisition Specialists dropdown options
+  const [specialists, setSpecialists] = useState([]);
 
   // Keep a ref of the user's "current" server email — used by the
   // email-uniqueness check so typing one's own email reports as available.
@@ -121,6 +150,25 @@ const ProfileInfoTab = ({ user, setUser, logout }) => {
     message: '',
   });
   const emailCheckTimer = useRef(null);
+
+  /* ---- load Acquisition Specialist options ---- */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getAdminUsers({ userType: 'acquisition_specialist' });
+        if (!cancelled) setSpecialists(res.data || []);
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Failed to fetch acquisition specialists:', err);
+          setSpecialists([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /* ---- hydrate from server on mount ---- */
   // We always fetch /profile/me so the form reflects the authoritative DB
@@ -144,6 +192,10 @@ const ProfileInfoTab = ({ user, setUser, logout }) => {
           lastName,
           email: data?.Email || '',
           phone: data?.Phone || '',
+          // TODO: confirm the exact field name your backend returns from /profile/me.
+          // Trying PascalCase (matches Name/Email/Phone/Address) with camelCase fallback.
+          acquisitionSpecialist:
+            data?.AcquisitionSpecialist ?? data?.acquisitionSpecialist ?? '',
           address: addr.street || '',
           city: addr.city || '',
           state: addr.state || '',
@@ -160,6 +212,8 @@ const ProfileInfoTab = ({ user, setUser, logout }) => {
           lastName: parts.slice(1).join(' ') || '',
           email: user?.email || '',
           phone: user?.phone || '',
+          acquisitionSpecialist:
+            user?.acquisitionSpecialist ?? user?.AcquisitionSpecialist ?? '',
           address: user?.address?.street || '',
           city: user?.address?.city || '',
           state: user?.address?.state || '',
@@ -272,6 +326,7 @@ const ProfileInfoTab = ({ user, setUser, logout }) => {
         lastName: formData.lastName.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone,
+        acquisitionSpecialist: formData.acquisitionSpecialist || '',
         address: {
           street: formData.address.trim(),
           city: formData.city.trim(),
@@ -423,6 +478,33 @@ const ProfileInfoTab = ({ user, setUser, logout }) => {
         />
       </div>
 
+      {/* Acquisition Specialist */}
+      <div>
+        <label
+          htmlFor="acquisitionSpecialist"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Acquisition Specialist
+        </label>
+        <select
+          id="acquisitionSpecialist"
+          name="acquisitionSpecialist"
+          className="mt-1 block w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#1E7AC0] focus:border-transparent transition bg-white"
+          value={formData.acquisitionSpecialist || ''}
+          onChange={handleChange}
+        >
+          <option value="">Select a specialist</option>
+          <option value="No Acquistion">
+            I don't have an Acquistion Specialist
+          </option>
+          {specialists.map((u) => (
+            <option key={u.email} value={u.email}>
+              {u.firstName} {u.lastName}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Address (optional block) */}
       <div className="pt-2">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Address (optional)</h3>
@@ -571,7 +653,7 @@ const ChangePasswordTab = ({ logout }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
         <div className="rounded-md bg-red-50 p-4">
           <p className="text-sm text-red-800">{error}</p>

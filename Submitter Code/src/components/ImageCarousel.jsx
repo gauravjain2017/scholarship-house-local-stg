@@ -5,22 +5,21 @@ const ImageCarousel = ({
   alt = 'Image',
   className = '',
   counterOnHover = false,
-  bottomLabel = null,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [failedImages, setFailedImages] = useState([]);
+  const [failedSet, setFailedSet] = useState(() => new Set());
 
-  // Filter out failed images
-  const validImages = (images || []).filter(
-    (img, idx) =>
-      !failedImages.includes(idx) &&
-      typeof img === 'string' &&
-      img.trim().length > 0
+  const allImages = (images || []).filter(
+    (img) => typeof img === 'string' && img.trim().length > 0
   );
 
-  // If all images fail or none provided, show fallback
-  if (!validImages || validImages.length === 0) {
+  // Build display list excluding failed images, preserving original indices
+  const displayImages = allImages
+    .map((src, i) => ({ src, i }))
+    .filter(({ i }) => !failedSet.has(i));
+
+  if (displayImages.length === 0) {
     return (
       <div
         className={`flex items-center justify-center bg-gray-100 text-gray-400 ${className}`}
@@ -30,36 +29,45 @@ const ImageCarousel = ({
     );
   }
 
-  const goToPrevious = () => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? validImages.length - 1 : prevIndex - 1
-    );
+  // Clamp in case images were removed after currentIndex was set
+  const safeIndex = Math.min(currentIndex, displayImages.length - 1);
+
+  const handleImageError = (origIdx) => {
+    setFailedSet((prev) => new Set([...prev, origIdx]));
   };
 
-  const goToNext = () => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === validImages.length - 1 ? 0 : prevIndex + 1
-    );
-  };
+  const goToPrevious = () =>
+    setCurrentIndex((p) => (p === 0 ? displayImages.length - 1 : p - 1));
 
-  const handleImageError = () => {
-    setFailedImages((prev) => [...prev, currentIndex]);
-  };
+  const goToNext = () =>
+    setCurrentIndex((p) => (p === displayImages.length - 1 ? 0 : p + 1));
 
   return (
     <div
-      className={`relative ${className}`}
+      className={`relative overflow-hidden ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <img
-        src={validImages[currentIndex]}
-        alt={`${alt} ${currentIndex + 1}`}
-        className="w-full h-full object-cover"
-        onError={handleImageError}
-      />
+      {/* All images rendered at once — hidden ones are preloaded by the browser,
+          so navigation is instant instead of waiting for a new network request */}
+      {allImages.map((src, origIdx) => {
+        if (failedSet.has(origIdx)) return null;
+        const displayIdx = displayImages.findIndex((d) => d.i === origIdx);
+        const isActive = displayIdx === safeIndex;
+        return (
+          <img
+            key={origIdx}
+            src={src}
+            alt={`${alt} ${displayIdx + 1}`}
+            className={`w-full h-full object-cover${
+              isActive ? '' : ' absolute inset-0 opacity-0 pointer-events-none'
+            }`}
+            onError={() => handleImageError(origIdx)}
+          />
+        );
+      })}
 
-      {validImages.length > 1 && (
+      {displayImages.length > 1 && (
         <>
           {/* Navigation Arrows */}
           {isHovered && (
@@ -113,53 +121,33 @@ const ImageCarousel = ({
             </>
           )}
 
+          {/* Dot Indicators */}
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
+            {displayImages.map((_, index) => (
+              <button
+                key={index}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setCurrentIndex(index);
+                }}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === safeIndex
+                    ? 'bg-surface w-6'
+                    : 'bg-surface/50 hover:bg-surface/75'
+                }`}
+                aria-label={`Go to image ${index + 1}`}
+              />
+            ))}
+          </div>
+
           {/* Image Counter */}
           {counterOnHover === true && isHovered && (
             <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded z-10">
-              {currentIndex + 1} / {validImages.length}
+              {safeIndex + 1} / {displayImages.length}
             </div>
           )}
         </>
-      )}
-
-      {/* Bottom center: type label with dots below */}
-      {(bottomLabel || validImages.length > 1) && (
-        <div className="absolute bottom-2 left-2 right-2 flex flex-col items-center gap-1 z-10">
-          {/* {bottomLabel && (
-            <span
-              className={`self-start bg-white/90 backdrop-blur-sm text-gray-800 font-semibold px-3 py-1.5 rounded-lg shadow max-w-full overflow-hidden text-ellipsis whitespace-nowrap ${
-                bottomLabel.length > 40
-                  ? 'text-[9px]'
-                  : bottomLabel.length > 25
-                    ? 'text-[10px]'
-                    : 'text-xs'
-              }`}
-              title={bottomLabel}
-            >
-              {bottomLabel}
-            </span>
-          )} */}
-          {validImages.length > 1 && (
-            <div className="flex space-x-1.5">
-              {validImages.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentIndex(index);
-                  }}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    index === currentIndex
-                      ? 'bg-surface w-6'
-                      : 'bg-surface/50 hover:bg-surface/75'
-                  }`}
-                  aria-label={`Go to image ${index + 1}`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
       )}
     </div>
   );

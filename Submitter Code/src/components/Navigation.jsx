@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import ProfileMenu from './ProfileMenu';
-import { getCanonicalRole } from '../utils/roles';
+import { getCanonicalRole, useHasPermission } from '../utils/roles';
 import logoTitleBlack from '../assets/icons/logo-scholarship-house/logo-title-black.png';
+// import { useHasPermission } from '../utils/roles';
 // import { notificationsAPI } from '../api/notifications';
 
 const BellIcon = () => (
@@ -27,13 +28,29 @@ const BellIcon = () => (
 const Navigation = () => {
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
-
+  const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+  
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   // Hide navigation on auth pages
   if (location.pathname.startsWith('/auth')) return null;
@@ -45,12 +62,9 @@ const Navigation = () => {
   tabs.push({ path: '/', label: 'Home' });
 
 
+
   // --- Submit Property ---
-  if (
-    ['submitter', 'team_member', 'admin'].includes(
-      getCanonicalRole(user?.userType)
-    )
-  ) {
+  if(useHasPermission('submit_property.can_create')){
     tabs.push({ path: '/submit', label: 'Submit Property' });
   }
 
@@ -58,29 +72,20 @@ const Navigation = () => {
 
 
   // --- My Properties (submitter only) ---
-  if (['submitter'].includes(getCanonicalRole(user?.userType))) {
+  if (useHasPermission('my_property.can_view')) {
     tabs.push({ path: '/my-properties', label: 'My Properties' });
   }
 
-  // --- Admin ---
-  if (['admin', 'team_member'].includes(getCanonicalRole(user?.userType))) {
-    tabs.push({ path: '/admin', label: 'Admin Dashboard' });
-  }
+ 
 
-  // --- Browse Properties ---
-  if (
-    ['client', 'team_member', 'admin'].includes(
-      getCanonicalRole(user?.userType)
-    )
-  ) {
-    tabs.push({ path: '/deals', label: 'Browse Properties' });
-    tabs.push({ path: '/favorite-properties', label: 'Favorite Properties' });
+  // --- Dashboard (everyone authenticated) ---
+  if (user) {
+    tabs.push({ path: '/dashboard', label: 'Dashboard' });
   }
-
 
 
   // --- My Profile (everyone authenticated) ---
-  if (user) {
+  if (user && useHasPermission('my_profile.can_view')) {
     tabs.push({ path: '/profile', label: 'My Profile' });
   }
 
@@ -103,9 +108,10 @@ const Navigation = () => {
 
   const unreadCount = (notifications || []).filter((n) => !n.notify).length;
 
+console.log('isScrolled : ',isScrolled)
   return (
-    <nav className="bg-surface shadow-md border-b-2 border-accent relative">
-      <div className="w-full px-[10px] md:px-6">
+    <nav className="bg-surface shadow-md border-b-2 border-accent relative sticky-header">
+      <div className={`w-full px-[10px] md:px-6 ${isScrolled ? 'test_scroll' : ''}`}>
         <div className="flex items-center justify-between h-20">
           <Link to="/" className="flex items-center py-2 logo_img">
             <img
@@ -133,7 +139,7 @@ const Navigation = () => {
                 ))}
 
                 {/* Notification Bell — shows real unread count */}
-                {role !== 'submitter' && (
+                {useHasPermission('property_notification.can_view') && (
                   <Link
                     to="/property-notifications"
                     className={`relative flex items-center justify-center w-10 h-10 rounded-lg mr-2 transition-colors ${isNotifActive
@@ -159,7 +165,7 @@ const Navigation = () => {
 
               {/* Mobile: bell + hamburger */}
               <div className="flex items-center md:hidden profile_menu_mob">
-                {role !== 'submitter' && (
+                {useHasPermission('property_notification.can_view') && (
                   <Link
                     to="/property-notifications"
                     className={`relative flex items-center md:justify-center justify-end w-10 h-10 rounded-lg md:mr-1 mr-0 transition-colors ${isNotifActive

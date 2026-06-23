@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getLatLongFromAddress, getOSMMapElement } from '../api/mapping';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { dealsAPI } from '../api/deals';
+import { getFavorites, addFavorite, removeFavorite } from '../api/favorites';
 import { useAuthSafe } from '../contexts/AuthContext';
 import Loader from '../components/Loader';
-import '../styles/main.css';
 
 export const PROPERTY_TYPES = [
   { value: 'SINGLE_FAMILY', label: 'Single Family Home' },
@@ -98,9 +98,74 @@ const formatCompact = (val) => {
   return `$${Math.round(n)}`;
 };
 
+const fmtPct = (val) => {
+  const n = Number(val);
+  if (Number.isNaN(n)) return '';
+  return n % 1 === 0 ? String(n) : n.toFixed(1);
+};
+
 const humanizeEnum = (value) => {
   if (!value || typeof value !== 'string') return '—';
   return value.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+/**
+ * Dedicated calculator for the 10-Year Financial Projection table.
+ * Intentionally independent from computeProForma and other section math —
+ * do not reuse this elsewhere.
+ *
+ * Year 1 is locked to the base values (from the Scholarship House inputs).
+ * Years 2–5 compound using the Years 1–5 growth percentages.
+ * Years 6–10 compound using the Years 6–10 growth percentages.
+ * Occupancy is capped at 100 %.
+ * A per-row override replaces the compounded value for that row only —
+ * following years keep compounding from the natural (non-overridden) baseline.
+ */
+const computeTenYearProjection = (baseOccupancy, baseNightlyRate, baseExpenses, growth, overrides = {}) => {
+  const rows = [];
+  let occ = Number(baseOccupancy) || 0;
+  let rate = Number(baseNightlyRate) || 0;
+  let exp = Number(baseExpenses) || 0;
+
+  for (let year = 1; year <= 10; year += 1) {
+    if (year > 1) {
+      const bucket = year <= 5 ? 'y1to5' : 'y6to10';
+      const gOcc = Number(growth?.occupancy?.[bucket]) || 0;
+      const gRate = Number(growth?.nightlyRate?.[bucket]) || 0;
+      const gExp = Number(growth?.expenses?.[bucket]) || 0;
+      occ = Math.min(100, occ + gOcc);
+      rate = rate * (1 + gRate / 100);
+      exp = exp * (1 + gExp / 100);
+    }
+
+    const row = overrides[year] || {};
+    const hasOverride = (v) => v !== undefined && v !== null && v !== '';
+    const isCleared = (v) => v === '';
+    const appliedOcc = hasOverride(row.occupancy) ? Math.min(100, Number(row.occupancy)) : occ;
+    const appliedRate = hasOverride(row.nightlyRate) ? Number(row.nightlyRate) : rate;
+    const appliedExp = hasOverride(row.expenses) ? Number(row.expenses) : exp;
+
+    const occCleared = isCleared(row.occupancy);
+    const rateCleared = isCleared(row.nightlyRate);
+    const expCleared = isCleared(row.expenses);
+
+    const displayOcc = Math.round(appliedOcc * 10) / 10;
+    const displayRate = Math.round(appliedRate);
+    const gross = (occCleared || rateCleared) ? null : Math.round(365 * (displayOcc / 100) * displayRate);
+    const expenses = expCleared ? null : Math.round(appliedExp);
+    const net = (gross === null || expenses === null) ? null : gross - expenses;
+
+    rows.push({
+      year,
+      occupancy: appliedOcc,
+      nightlyRate: appliedRate,
+      grossRevenue: gross,
+      expenses,
+      netRevenue: net,
+      isLocked: year === 1,
+    });
+  }
+  return rows;
 };
 
 /**
@@ -416,9 +481,9 @@ const ImageLightbox = ({ images, startIndex, onClose }) => {
 };
 
 const SectionHeading = ({ title, icon }) => (
-  <div className="mb-4 flex items-center gap-2 revenue-hed">
+  <div className="mb-4 flex items-center gap-2">
     <span className="text-sky-600">{icon}</span>
-    <h2 className=" text-[18px] font-bold uppercase tracking-wide text-sky-700">{title}</h2>
+    <h2 className=" text-[16px] font-bold uppercase tracking-wide text-sky-700">{title}</h2>
   </div>
 );
 
@@ -445,9 +510,9 @@ const TieredMetric = ({ title, unit = '', data = {} }) => (
 );
 
 const StatItem = ({ label, value, valueClassName = '' }) => (
-  <div className="str-box">
+  <div>
     <p className="mb-1 text-[11px] font-bold uppercase text-gray-700">{label}</p>
-    <p className={`text-[13px] font-semibold text-gray-900 ${valueClassName}`}>{value || '—'}</p>
+    <p className={`text-[13px] font-bold text-gray-900 ${valueClassName}`}>{value || '—'}</p>
   </div>
 );
 
@@ -466,13 +531,13 @@ const DetailRow = ({ label, value, emphasized = false }) => (
 const DataTable = ({ columns, rows }) => (
   <div className="overflow-hidden">
     <div className="overflow-x-auto">
-      <table className="min-w-full text-sm tier-table-detail">
+      <table className="min-w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-200 text-left row-bg">
+          <tr className="border-b border-slate-200 text-left">
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`pb-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-600 ${column.align === 'right' ? 'text-right' : ''
+                className={`pb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-600 ${column.align === 'right' ? 'text-right' : ''
                   }`}
               >
                 {column.label}
@@ -482,7 +547,7 @@ const DataTable = ({ columns, rows }) => (
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} className="border-b border-slate-200 revenue-tier ">
+            <tr key={rowIndex} className="border-b border-slate-200 ">
               {columns.map((column) => (
                 <td
                   key={column.key}
@@ -573,6 +638,89 @@ const DealDetailView = ({
 
   const [editableOccupancy, setEditableOccupancy] = useState(null);
   const [editableANR, setEditableANR] = useState(null);
+
+  // Hide favorite CTA when rendered on the public /property/* route
+  const routeLocation = useLocation();
+  const isPropertyRoute = routeLocation?.pathname?.startsWith('/property');
+
+  // ── Favorites (add / remove from detail page) ──────────────────────────────
+  const { isAuthenticated } = useAuthSafe();
+  const queryClient = useQueryClient();
+
+  const {
+    data: favorites = [],
+    isFetched: favoritesFetched,
+  } = useQuery({
+    queryKey: ['favorites'],
+    queryFn: getFavorites,
+    enabled: isAuthenticated,
+  });
+
+  const [optimisticFavorites, setOptimisticFavorites] = useState(new Set());
+  const favoriteSet = new Set(favorites);
+  optimisticFavorites.forEach((id) => favoriteSet.add(id));
+  const isFavorited = deal ? favoriteSet.has(deal.id) : false;
+  // True once the favorites query has returned at least once OR we have an
+  // optimistic entry to trust. Prevents the "Add to Favorites" → "Favorited"
+  // flicker on hard refresh while the list is still loading.
+  const favoritesReady = favoritesFetched || optimisticFavorites.size > 0;
+
+  const addFavoriteMutation = useMutation({
+    mutationFn: addFavorite,
+    onMutate: async (propertyId) => {
+      setOptimisticFavorites((prev) => {
+        const next = new Set(prev);
+        next.add(propertyId);
+        return next;
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
+    onError: (_err, propertyId) => {
+      setOptimisticFavorites((prev) => {
+        const next = new Set(prev);
+        next.delete(propertyId);
+        return next;
+      });
+    },
+  });
+
+  const removeFavoriteMutation = useMutation({
+    mutationFn: removeFavorite,
+    onMutate: async (propertyId) => {
+      setOptimisticFavorites((prev) => {
+        const next = new Set(prev);
+        next.delete(propertyId);
+        return next;
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
+    onError: (_err, propertyId) => {
+      setOptimisticFavorites((prev) => {
+        const next = new Set(prev);
+        next.add(propertyId);
+        return next;
+      });
+    },
+  });
+
+  const toggleFavorite = () => {
+    if (!deal?.id) return;
+    if (!isAuthenticated) return;
+    if (isFavorited) removeFavoriteMutation.mutate(deal.id);
+    else addFavoriteMutation.mutate(deal.id);
+  };
+
+  // 10-Year Financial Projection — isolated state (do not reuse elsewhere)
+  const [tenYearGrowth, setTenYearGrowth] = useState({
+    occupancy: { y1to5: 5, y6to10: 2 },
+    nightlyRate: { y1to5: 20, y6to10: 5 },
+    expenses: { y1to5: 3, y6to10: 3 },
+  });
+  const [tenYearOverrides, setTenYearOverrides] = useState({});
 
   const PROPERTY_TYPE_LABELS = useMemo(
     () => PROPERTY_TYPES.reduce((acc, item) => ({ ...acc, [item.value]: item.label }), {}),
@@ -712,14 +860,70 @@ const DealDetailView = ({
       {showIncludedModal && <WhatsIncludedModal onClose={() => setShowIncludedModal(false)} />}
 
       <div className="mx-auto max-w-[1320px] px-4 py-8 md:px-6 lg:px-6">
-        {bckProperty && (
-          <button
-            onClick={onBack}
-            className="mb-8 inline-flex items-center gap-2 text-base font-medium text-gray-700 transition hover:text-slate-700"
-          >
-            <span className="text-lg">←</span> {backLabel}
-          </button>
-        )}
+        <div className="mb-8 flex items-center justify-between gap-3 flex-wrap">
+          {bckProperty ? (
+            <button
+              onClick={onBack}
+              className="inline-flex items-center gap-2 text-base font-medium text-gray-700 transition hover:text-slate-700"
+            >
+              <span className="text-lg">←</span> {backLabel}
+            </button>
+          ) : (
+            <span />
+          )}
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {isAuthenticated && !isPropertyRoute && (
+              <button
+                type="button"
+                onClick={toggleFavorite}
+                disabled={
+                  !favoritesReady ||
+                  addFavoriteMutation.isPending ||
+                  removeFavoriteMutation.isPending
+                }
+                aria-pressed={favoritesReady ? isFavorited : undefined}
+                aria-busy={!favoritesReady}
+                title={
+                  !favoritesReady
+                    ? 'Loading favorites…'
+                    : isFavorited
+                      ? 'Remove from Favorites'
+                      : 'Add to Favorites'
+                }
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold shadow-sm transition
+                  ${!favoritesReady
+                    ? 'border-slate-200 bg-white text-slate-400'
+                    : isFavorited
+                      ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      : 'border-slate-200 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700'}
+                  disabled:opacity-60 disabled:cursor-not-allowed`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill={favoritesReady && isFavorited ? '#F59E0B' : 'none'}
+                  stroke="#F59E0B"
+                  strokeWidth={2}
+                  className={`w-5 h-5 ${!favoritesReady ? 'animate-pulse' : ''}`}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 2.5l2.938 5.95 6.562.955-4.75 4.63 1.12 6.53L12 17.77l-5.87 3.09 1.12-6.53-4.75-4.63 6.562-.955L12 2.5z"
+                  />
+                </svg>
+                <span>
+                  {!favoritesReady
+                    ? 'Loading…'
+                    : isFavorited
+                      ? 'Favorited'
+                      : 'Add to Favorites'}
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
         <div className="p-6 px-3 md:px-8 md:p-8 rounded-2xl border border-slate-200 bg-slate-50/90">
           {deal.status === 'sold' && (
             <div className="mb-8 rounded-3xl border border-red-200 bg-red-50 px-6 py-5 text-red-800">
@@ -751,6 +955,11 @@ const DealDetailView = ({
                 label: '50/50 Joint Venture',
                 color: 'bg-violet-50 text-violet-700 ring-violet-200',
                 icon: '🤝',
+              },
+              { key: 'preapproved5050',
+                show: deal.fiftyFiftyPreApproved === true, 
+                label: '50-50 Pre Approved',
+                color: 'bg-indigo-50 text-indigo-700 ring-indigo-200', icon: '✅' 
               },
               {
                 key: 'turnkey',
@@ -906,7 +1115,7 @@ const DealDetailView = ({
                 <p className="mt-2 text-sm text-slate-400 line-through">${formatPrice(deal.discountedPrice)}</p>
               )}
 
-              <SoftCard className="mt-6 p-6 bg-white rounded-xl border border-gray-100 rooms-col">
+              <SoftCard className="mt-6 p-6 bg-white rounded-xl border border-gray-100">
                 <div className="grid gap-6 grid-cols-2 lg:grid-cols-5 fontcolor_light">
                   <StatItem label="Type" value={PROPERTY_TYPE_LABELS[deal.category] || humanizeEnum(deal.category)} />
                   <StatItem label="Bedrooms" value={deal.bedrooms || '—'} />
@@ -929,7 +1138,7 @@ const DealDetailView = ({
               <div>
                 <SectionHeading title="Financing & STR Details" icon="🏛" />
                 <SoftCard className="mt-2">
-                  <div className="p-5 border border-gray-100 grid gap-6 grid-cols-2 lg:grid-cols-3 bg-white rounded-xl str-main">
+                  <div className="p-5 border border-gray-100 grid gap-6 grid-cols-2 lg:grid-cols-3 bg-white rounded-xl">
                     <StatItem label="Financing Type" value={humanizeEnum(deal.financingType)} />
                     <StatItem
                       label="Interest Rate"
@@ -1006,7 +1215,7 @@ const DealDetailView = ({
           </div>
 
           {hasValue(deal.description) && (
-            <section className="mt-12 border-t border-slate-200 description-box bg-white rounded-xl border border-gray-100">
+            <section className="mt-12 border-t border-slate-200 pt-10">
               <SectionHeading title="Description" icon="✦" />
               <p className="text-sm text-gray-600">{deal.description}</p>
             </section>
@@ -1027,7 +1236,7 @@ const DealDetailView = ({
               <section className="mt-10 border-t border-slate-200 pt-10">
                 <SectionHeading title="Market Research" icon="↗" />
                 <SoftCard className="">
-                  <div className="grid gap-4 grid-cols-2 xl:grid-cols-4 p-4 border border-gray-100 bg-amber-50 rounded-xl">
+                  <div className="grid gap-4 grid-cols-2 xl:grid-cols-4 p-4 border border-gray-100 bg-white rounded-xl">
                     <SoftCard className="">
                       <StatItem label="Market Type" value={humanizeEnum(deal.underwritingMarketType)} />
                     </SoftCard>
@@ -1078,7 +1287,7 @@ const DealDetailView = ({
 
 
           {tierRows.length > 0 && (
-            <section className="mt-12 border-t border-slate-200 pt-10 table_sec description-box bg-white rounded-xl border border-gray-100">
+            <section className="mt-12 border-t border-slate-200 pt-10 table_sec">
               <SectionHeading title="Nightly Rate & Revenue Tiers" icon="📊" />
               <DataTable
                 columns={[
@@ -1098,16 +1307,21 @@ const DealDetailView = ({
           )}
 
           {/* Top Properties (Comps) */}
-          {hasAnyValue(
-            deal.comp_1_link, deal.comp_2_link, deal.comp_3_link,
-            deal.comp_4_link, deal.comp_5_link, deal.comp_6_link,
-            deal.comp_7_link, deal.comp_8_link, deal.comp_9_link, deal.comp_10_link
-          ) && (
-              <section className="mt-12 border-t border-slate-200 pt-10 table_sec description-box bg-white rounded-xl border border-gray-100">
-                <div className="mb-6 space-y-1 comps">
-                  <div className="flex items-center gap-2 revenue-hed">
+          {(() => {
+            const compNums = Object.keys(deal)
+              .map((k) => {
+                const m = k.match(/^comp_(\d+)_(title|dailyRate|occupancy|link|grossRevenue)$/);
+                return m && deal[k] ? Number(m[1]) : null;
+              })
+              .filter((n) => n !== null);
+            const maxCompNum = compNums.length ? Math.max(...compNums) : 0;
+            return maxCompNum > 0;
+          })() && (
+              <section className="mt-12 border-t border-slate-200 pt-10">
+                <div className="mb-6 space-y-1">
+                  <div className="flex items-center gap-2">
                     <span className="text-sky-600">🏆</span>
-                    <h2 className="text-[18px] font-bold uppercase tracking-wide text-sky-700">Top Properties (Comps)</h2>
+                    <h2 className="text-[16px] font-bold uppercase tracking-wide text-sky-700">Top Properties (Comps)</h2>
                   </div>
                   <p className="text-sm text-gray-600">
                     These properties represent top-performing listings in the area and are shown to illustrate{' '}
@@ -1119,26 +1333,38 @@ const DealDetailView = ({
                   </p>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm mobile_width tier-table-detail">
+                  <table className="min-w-full text-sm mobile_width">
                     <thead>
-                      <tr className="border-b border-slate-200 text-left row-bg">
-                        <th className="pb-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-600">Property</th>
+                      <tr className="border-b border-slate-200 text-left">
+                        <th className="pb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-600">Property</th>
 
-                        <th className="pb-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-600 text-right">Occupancy</th>
-                        <th className="pb-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-600 text-right">Daily Rate</th>
-                        <th className="pb-3 text-xs font-bold uppercase tracking-[0.14em] text-gray-600 text-right">Revenue</th>
+                        <th className="pb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-600 text-right">Occupancy</th>
+                        <th className="pb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-600 text-right">Daily Rate</th>
+                        <th className="pb-3 text-xs font-semibold uppercase tracking-[0.14em] text-gray-600 text-right">Revenue</th>
 
                       </tr>
                     </thead>
                     <tbody className="">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+                      {(() => {
+                        const nums = Array.from(
+                          new Set(
+                            Object.keys(deal)
+                              .map((k) => {
+                                const m = k.match(/^comp_(\d+)_(title|dailyRate|occupancy|link|grossRevenue)$/);
+                                return m ? Number(m[1]) : null;
+                              })
+                              .filter((n) => n !== null)
+                          )
+                        ).sort((a, b) => a - b);
+                        return nums;
+                      })().map((num) => {
                         const link = deal[`comp_${num}_link`];
                         const revenue = deal[`comp_${num}_grossRevenue`];
                         const title = deal[`comp_${num}_title`] || `Property ${num}`;
                         if (!link && !revenue) return null;
                         const href = link && !link.includes(' ') ? link : '#';
                         return (
-                          <tr key={num} className="hover:bg-slate-50 transition-colors border-b border-slate-200 revenue-tier">
+                          <tr key={num} className="hover:bg-slate-50 transition-colors border-b border-slate-200">
                             <td className="py-4 w-[190px] md:w-[400px]">
                               {link ? (
                                 <a
@@ -1177,7 +1403,7 @@ const DealDetailView = ({
           {/* ── Underwriting Images ───────────────────────────────────────── */}
           {/* ── Underwriting Images ───────────────────────────────────────── */}
           {Array.isArray(deal.underwritingImages) && deal.underwritingImages.length > 0 && (
-            <section className="mt-10 border-t border-slate-200 pt-10 description-box bg-white rounded-xl border border-gray-100">
+            <section className="mt-10 border-t border-slate-200 pt-10">
               <SectionHeading title="Underwriting Materials" icon="📋" />
               <p className="mb-4 text-sm text-slate-500">Supporting screenshots, analyses, and reference materials used during underwriting.</p>
               {(() => {
@@ -1252,7 +1478,7 @@ const DealDetailView = ({
                 return (
                   <>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <SoftCard className="bg-amber-50 p-5 border border-gray-50 rounded-xl price_size">
+                      <SoftCard className="bg-gray-100 p-5 border border-gray-50 rounded-xl price_size">
                         <p className="mb-1 text-[11px] font-bold uppercase text-gray-700">Occupancy Rate</p>
                         <div className="flex items-center gap-1">
                           <input
@@ -1285,7 +1511,7 @@ const DealDetailView = ({
                         <p className="mt-1 text-[11px] text-slate-400">Max value is 100%</p>
                       </SoftCard>
 
-                      <SoftCard className="p-5 bg-emerald-50 border border-gray-50 rounded-xl price_size">
+                      <SoftCard className="p-5 bg-gray-100 border border-gray-50 rounded-xl price_size">
                         <p className="mb-1 text-[11px] font-bold uppercase text-gray-700">Avg Nightly Rate</p>
                         <div className="flex items-center gap-1">
                           <span className="text-[15px] font-bold text-gray-900">$</span>
@@ -1324,9 +1550,9 @@ const DealDetailView = ({
                       const hasExpenses = hasValue(deal.expenseTotalAnnual);
                       const netRevenue = estimatedRevenue - annualExpenses;
                       return (
-                        <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 overflow-hidden px-6 py-5 space-y-4 gross-revenue">
+                        <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 overflow-hidden px-6 py-5 space-y-4">
                           {/* Estimated Gross Revenue */}
-                          <div className="flex items-start justify-between gap-4 gr-box">
+                          <div className="flex items-start justify-between gap-4">
                             <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400 shrink-0 pt-1">
                               Estimated Gross Revenue
                             </span>
@@ -1343,15 +1569,15 @@ const DealDetailView = ({
                           {/* Net Revenue — only shown when expenseTotalAnnual exists */}
                           {hasExpenses && (
                             <>
-                              <div className="flex items-center gap-3 annual-exp">
+                              <div className="flex items-center gap-3">
                                 <div className="flex-1 border-t border-dashed border-sky-200" />
-                                <span className="text-[12px] font-semibold uppercase tracking-widest text-slate-400 shrink-0 gr-text">
+                                <span className="text-[12px] font-semibold uppercase tracking-widest text-slate-400 shrink-0">
                                   minus ${annualExpenses.toLocaleString('en-US')} annual expenses
                                 </span>
                                 <div className="flex-1 border-t border-dashed border-sky-200" />
                               </div>
 
-                              <div className="flex items-start justify-between gap-4 gr-box">
+                              <div className="flex items-start justify-between gap-4">
                                 <span className="text-[12px] font-bold uppercase tracking-[0.14em] text-emerald-500 shrink-0 pt-1">
                                   Net Revenue
                                 </span>
@@ -1377,6 +1603,259 @@ const DealDetailView = ({
                 );
               })()}
             </SoftCard>
+
+            {/* 10-Year Financial Projection — isolated calculation */}
+            {(() => {
+              const anrValuesTY = [
+                deal.anr_budget,
+                deal.anr_economy,
+                deal.anr_midscale,
+                deal.anr_upscale,
+                deal.anr_luxury,
+              ]
+                .map((v) => parseFloat(v))
+                .filter((v) => !isNaN(v) && v > 0);
+              const overallAvgANR_TY =
+                anrValuesTY.length > 0
+                  ? anrValuesTY.reduce((sum, v) => sum + v, 0) / anrValuesTY.length
+                  : 0;
+              const baseANR_TY = Math.round(parseInt(deal.averageNightRate || 0) || overallAvgANR_TY || 0);
+              const avgANR_TY = editableANR !== null && editableANR !== ''
+                ? Math.round(Number(editableANR))
+                : (editableANR === '' ? 0 : baseANR_TY);
+              const occupancy_TY = editableOccupancy !== null && editableOccupancy !== ''
+                ? Math.round(Number(editableOccupancy))
+                : Math.round(parseFloat(deal.occupancyRate || 0)) || 0;
+              const annualExpenses_TY = Math.round(parseFloat(deal.expenseTotalAnnual || 0));
+
+              const rows = computeTenYearProjection(
+                occupancy_TY,
+                avgANR_TY,
+                annualExpenses_TY,
+                tenYearGrowth,
+                tenYearOverrides,
+              );
+
+              const updateGrowth = (group, bucket, raw) => {
+                let v = String(raw).replace(/[^0-9.]/g, '');
+                const dot = v.indexOf('.');
+                if (dot !== -1) {
+                  v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '');
+                  const [intPart, decPart = ''] = v.split('.');
+                  v = intPart + '.' + decPart.slice(0, 1);
+                }
+                v = v.replace(/^0+(?=\d)/, '');
+                if (v !== '' && v !== '.' && Number(v) > 100) v = '100';
+                setTenYearGrowth((prev) => ({
+                  ...prev,
+                  [group]: { ...prev[group], [bucket]: v },
+                }));
+              };
+              const updateOverride = (year, field, val) => {
+                setTenYearOverrides((prev) => ({
+                  ...prev,
+                  [year]: { ...(prev[year] || {}), [field]: val },
+                }));
+              };
+
+              const growthGroups = [
+                { key: 'occupancy', label: 'Occupancy Growth', icon: '🏠' },
+                { key: 'nightlyRate', label: 'Nightly Rate Growth', icon: '💲' },
+                { key: 'expenses', label: 'Expense Growth', icon: '📋' },
+              ];
+
+              return (
+                <SoftCard className="mt-6 p-5 border border-gray-100 bg-white rounded-xl">
+                  <div className="mb-4 flex items-center gap-2">
+                    <span className="text-sky-600">📈</span>
+                    <h3 className="text-[14px] font-bold uppercase tracking-wide text-sky-700">
+                      10-Year Financial Projection
+                    </h3>
+                  </div>
+
+                  {/* Auto-Growth Settings */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="mb-4 flex items-center gap-2">
+                      <span className="text-slate-500">⚙️</span>
+                      <h4 className="text-[12px] font-bold uppercase tracking-wide text-sky-700">
+                        Auto-Growth Settings
+                      </h4>
+                    </div>
+                    <div className="grid gap-5 md:grid-cols-3">
+                      {growthGroups.map((g) => (
+                        <div key={g.key}>
+                          <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-sky-700">
+                            <span className="mr-1">{g.icon}</span>{g.label}
+                          </p>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[12px] text-slate-500 w-20">Years 1–5</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={tenYearGrowth[g.key].y1to5}
+                              onChange={(e) => updateGrowth(g.key, 'y1to5', e.target.value)}
+                              className="w-16 rounded-md border border-slate-300 px-2 py-1 text-[13px] font-semibold text-slate-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            />
+                            <span className="text-[13px] font-semibold text-slate-600">%</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[12px] text-slate-500 w-20">Years 6–10</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={tenYearGrowth[g.key].y6to10}
+                              onChange={(e) => updateGrowth(g.key, 'y6to10', e.target.value)}
+                              className="w-16 rounded-md border border-slate-300 px-2 py-1 text-[13px] font-semibold text-slate-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            />
+                            <span className="text-[13px] font-semibold text-slate-600">%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* <button
+                      type="button"
+                      onClick={() => setTenYearOverrides({})}
+                      className="mt-5 inline-flex items-center gap-2 rounded-md bg-teal-500 px-4 py-2 text-[13px] font-bold text-white shadow-sm hover:bg-teal-600"
+                    >
+                      ▶ Apply Auto Growth &amp; Reset Overrides
+                    </button> */}
+                  </div>
+
+                  {/* Projection Table */}
+                  <div className="mt-5 overflow-x-auto rounded-xl border border-gray-100">
+                    <table className="w-full text-left text-[13px]">
+                      <thead className="bg-slate-50">
+                        <tr className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                          <th className="px-4 py-3">Year</th>
+                          <th className="px-4 py-3">Occupancy %</th>
+                          <th className="px-4 py-3">Avg Nightly Rate</th>
+                          <th className="px-4 py-3 bg-sky-50 text-sky-700">Gross Revenue ⚡</th>
+                          <th className="px-4 py-3">Expenses</th>
+                          <th className="px-4 py-3 text-right text-sky-700">Net Revenue ⚡</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((r) => {
+                          const override = tenYearOverrides[r.year] || {};
+                          const hasOverride = (v) => v !== undefined && v !== null && v !== '';
+                          return (
+                            <tr
+                              key={r.year}
+                              className={`border-t border-gray-100 ${r.isLocked ? 'bg-sky-50/50' : ''}`}
+                            >
+                              <td className="px-4 py-3">
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-bold ${
+                                    r.isLocked ? 'bg-blue-500 text-white' : 'bg-blue-100 text-slate-700'
+                                  }`}
+                                >
+                                  {r.year}
+                                  {r.isLocked && <span>🔒</span>}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                {r.isLocked ? (
+                                  <span className="font-semibold text-slate-700">
+                                    {fmtPct(r.occupancy)}%
+                                  </span>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      value={
+                                        override.occupancy !== undefined
+                                          ? override.occupancy
+                                          : fmtPct(r.occupancy)
+                                      }
+                                      onChange={(e) => {
+                                        let v = e.target.value.replace(/[^0-9.]/g, '');
+                                        const dot = v.indexOf('.');
+                                        if (dot !== -1) {
+                                          v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '');
+                                          const [intPart, decPart = ''] = v.split('.');
+                                          v = intPart + '.' + decPart.slice(0, 1);
+                                        }
+                                        v = v.replace(/^0+(?=\d)/, '');
+                                        if (v !== '' && v !== '.' && Number(v) > 100) v = '100';
+                                        updateOverride(r.year, 'occupancy', v);
+                                      }}
+                                      className="w-20 rounded-md border border-slate-200 px-2 py-1 text-[13px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                    />
+                                    <span className="text-[13px] text-slate-400">%</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {r.isLocked ? (
+                                  <span className="font-semibold text-slate-700">
+                                    ${Math.round(r.nightlyRate).toLocaleString('en-US')}
+                                  </span>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[13px] text-slate-400">$</span>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={
+                                        override.nightlyRate !== undefined
+                                          ? (override.nightlyRate === ''
+                                              ? ''
+                                              : Number(String(override.nightlyRate).replace(/,/g, '')).toLocaleString('en-US'))
+                                          : Math.round(r.nightlyRate).toLocaleString('en-US')
+                                      }
+                                      onChange={(e) => updateOverride(r.year, 'nightlyRate', e.target.value.replace(/[^0-9]/g, ''))}
+                                      className="w-24 rounded-md border border-slate-200 px-2 py-1 text-[13px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                    />
+                                  </div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 bg-sky-50/50 font-semibold text-slate-700">
+                                {r.grossRevenue === null ? '—' : `$${r.grossRevenue.toLocaleString('en-US')}`}
+                              </td>
+                              <td className="px-4 py-3">
+                                {r.isLocked ? (
+                                  <span className="font-semibold text-slate-700">
+                                    {r.expenses === null ? '—' : `$${r.expenses.toLocaleString('en-US')}`}
+                                  </span>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[13px] text-slate-400">$</span>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={
+                                        override.expenses !== undefined
+                                          ? (override.expenses === ''
+                                              ? ''
+                                              : Number(String(override.expenses).replace(/,/g, '')).toLocaleString('en-US'))
+                                          : Math.round(r.expenses ?? 0).toLocaleString('en-US')
+                                      }
+                                      onChange={(e) => updateOverride(r.year, 'expenses', e.target.value.replace(/[^0-9]/g, ''))}
+                                      className="w-28 rounded-md border border-slate-200 px-2 py-1 text-[13px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                                    />
+                                  </div>
+                                )}
+                              </td>
+                              <td
+                                className={`px-4 py-3 text-right font-bold ${
+                                  r.netRevenue === null ? 'text-slate-400' : r.netRevenue < 0 ? 'text-red-500' : 'text-emerald-600'
+                                }`}
+                              >
+                                {r.netRevenue === null
+                                  ? '—'
+                                  : `${r.netRevenue < 0 ? '-' : ''}$${Math.abs(r.netRevenue).toLocaleString('en-US')}`}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </SoftCard>
+              );
+            })()}
+
           </section>
           <div className="mt-5 flex items-start gap-3 rounded-xl border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-transparent px-4 py-3">
             <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
@@ -1455,7 +1934,7 @@ const DealDetailView = ({
                           <span className="text-[15px] font-bold text-gray-900">%</span>
                         </div>
                       </SoftCard>
-                      <SoftCard className="p-5 border border-gray-100 bg-amber-50 rounded-xl font_15">
+                      <SoftCard className="p-5 border border-gray-100 bg-white rounded-xl font_15">
                         <StatItem label="Est. Income Reduction" value={fmt$(incomeReduction)} />
                       </SoftCard>
                       <SoftCard className="bg-sky-50 p-5 border border-border-subtle rounded-xl font_15">
@@ -1499,7 +1978,7 @@ const DealDetailView = ({
 
                 <div className="mt-6 grid gap-6 xl:grid-cols-3">
                   <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 market-box">Cash-on-cash returns (Year 1, 3, 5)</h3>
+                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1">Cash-on-cash returns (Year 1, 3, 5)</h3>
                     <div className="space-y-2 p-2">
                       <DetailRow
                         label="1-Yr Cash-on-Cash"
@@ -1517,7 +1996,7 @@ const DealDetailView = ({
                   </SoftCard>
 
                   <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 market-box">Client Out-of-Pocket Investment</h3>
+                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1">Client Out-of-Pocket Investment</h3>
                     <div className="space-y-2 p-2">
                       {/* LLC JV Buy-In = PurcPrice × 30 %  (INPUTS!B12) */}
                       <DetailRow label="LLC Joint Venture Buy-In" value={fmt$(pf.llcBuyIn)} />
@@ -1547,7 +2026,7 @@ const DealDetailView = ({
                   </SoftCard>
 
                   <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 market-box">Client Tax Snapshot (Year 1)</h3>
+                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1">Client Tax Snapshot (Year 1)</h3>
                     <div className="space-y-2 p-2">
                       {/* Bonus Depreciation = CostSeg % × PurcPrice  (INPUTS!B44) */}
                       <DetailRow label="Est. Bonus Depreciation" value={fmt$(pf.bonusDepr)} />
@@ -1602,7 +2081,7 @@ const DealDetailView = ({
                 {/* 5-Year Cash Flow + Sale Snapshot — 2 columns */}
                 <div className="mt-6 grid gap-6 xl:grid-cols-2">
                   <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 market-box">Client 5-Year Cash Flow Summary</h3>
+                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1">Client 5-Year Cash Flow Summary</h3>
                     <div className="space-y-2 p-2">
                       {/* Annual distributions = LLC Buy-In × 8 % preferred rate  (INPUTS!B39) */}
                       {[1, 2, 3, 4, 5].map((yr) => (
@@ -1614,7 +2093,7 @@ const DealDetailView = ({
                   </SoftCard>
 
                   <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 market-box">Sale Snapshot at Exit Year</h3>
+                    <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1">Sale Snapshot at Exit Year</h3>
                     <div className="space-y-2 p-2">
                       {/* Purchase Price = INPUTS!B11 */}
                       <DetailRow label="Purchase Price" value={fmt$(pf.purchasePrice)} />
@@ -1787,7 +2266,7 @@ const DealDetailView = ({
                 <div className="grid gap-5 lg:grid-cols-2">
                   {Array.isArray(deal.travelMotivations) && deal.travelMotivations.length > 0 && (
                     <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                      <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 uppercase market-box">Why People Travel Here</h3>
+                      <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 uppercase">Why People Travel Here</h3>
                       <div className="flex flex-wrap gap-2 p-5">
                         {deal.travelMotivations.map((tag) => (
                           <span
@@ -1803,7 +2282,7 @@ const DealDetailView = ({
 
                   {Array.isArray(deal.vacationRentalMarkets) && deal.vacationRentalMarkets.length > 0 && (
                     <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                      <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 uppercase market-box">Vacation Rental Markets</h3>
+                      <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 uppercase">Vacation Rental Markets</h3>
                       <div className="flex flex-wrap gap-2 p-5">
                         {deal.vacationRentalMarkets.map((tag) => (
                           <span
@@ -1819,7 +2298,7 @@ const DealDetailView = ({
 
                   {hasValue(deal.guestDemandInsights) && (
                     <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                      <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 uppercase market-box">Guest Demand Insights</h3>
+                      <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 uppercase">Guest Demand Insights</h3>
                       <p className="whitespace-pre-wrap text-gray-600 p-5">{deal.guestDemandInsights}</p>
                     </SoftCard>
                   )}
@@ -1833,7 +2312,7 @@ const DealDetailView = ({
 
                   {hasValue(deal.localAttractions) && (
                     <SoftCard className="border border-gray-100 bg-white rounded-xl">
-                      <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 uppercase uppercase market-box">Local Attractions</h3>
+                      <h3 className="p-5 mb-1 text-[17px] font-semibold text-white bg-accent table_head1 uppercase uppercase">Local Attractions</h3>
                       <p className="whitespace-pre-wrap text-gray-600 p-5">{deal.localAttractions}</p>
                     </SoftCard>
                   )}
@@ -1887,18 +2366,9 @@ const DealDetailPage = () => {
     queryFn: () => dealsAPI.getDealById(dealId),
     enabled: !!dealId,
   });
-  
-   if(user?.userType == 'submitter'){
-    console.log('user email : ', user?.email);
-    console.log('property email : ',deal?.submitterEmail)
-      if(user?.email != deal?.submitterEmail){
-         navigate('/my-properties');
-         return;
-      }
-  }
 
   const ALLOWED_STATUSES = ['published', 'sold', 'pending'];
-  const isPrivileged = loginUserRole === 'admin' || loginUserRole === 'team_member';
+  const isPrivileged = loginUserRole === 'admin' || loginUserRole === 'team_member' || loginUserRole === 'submitter';
   const propertyVisible = isPrivileged || ALLOWED_STATUSES.includes(deal?.status);
 
 
@@ -1921,22 +2391,20 @@ const DealDetailPage = () => {
   const handleBack = () => {
     window.scrollTo(0, 0);
     if (location.state?.from === 'admin-properties') navigate('/admin/properties');
-    else if (location.state?.from === '/favorite-properties') navigate('/favorite-properties');
     else if (location.state?.from === '/admin/properties') navigate('/admin/properties');
-	else if (location.state?.from === '/my-properties') navigate('/my-properties');
+    else if (location.state?.from === '/my-properties') navigate('/my-properties');
+    else if (location.state?.from === '/favorite-properties') navigate('/favorite-properties');
     else navigate('/deals');
   };
 
   const backLabel =
-    location.state?.from === 'admin-properties'
+    location.state?.from === 'admin-properties' || location.state?.from === '/admin/properties'
       ? 'Back to Property Management'
-      : location.state?.from === '/favorite-properties'
-        ? 'Back to Favorite Properties'
-        : location.state?.from === '/admin/properties'
-          ? 'Back to Properties'
-           : location.state?.from === '/my-properties'
-            ? 'Back to My Properties'
-            : 'Back to Deals';
+      : location.state?.from === '/my-properties'
+        ? 'Back to My Properties'
+        : location.state?.from === '/favorite-properties'
+          ? 'Back to Favorite Properties'
+          : 'Back to Deals';
 
 
   return <DealDetailView deal={deal} onBack={handleBack} backLabel={backLabel} canViewAddress={canViewAddress} />;

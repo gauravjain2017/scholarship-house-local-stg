@@ -14,16 +14,6 @@ export function validateStep(step, formData) {
       if (!formData.submitterRelationship) {
         errors.submitterRelationship = 'Your relationship to this property is required';
       }
-      if (!formData.expiry_date || isEmpty(formData.expiry_date)) {
-        errors.expiry_date = 'Property expiry date is required';
-      } else {
-        const expiry = new Date(formData.expiry_date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (isNaN(expiry.getTime()) || expiry < today) {
-          errors.expiry_date = 'Property expiry date must be a future date';
-        }
-      }
       if (!formData.category) {
         errors.category = 'Property type is required';
       }
@@ -47,6 +37,18 @@ export function validateStep(step, formData) {
       }
       if (!formData.description || formData.description.length < 30) {
         errors.description = 'Description must be at least 30 characters';
+      }
+      if (formData.isHOA && isEmpty(formData.hoaMonthlyFee)) {
+        errors.hoaMonthlyFee = 'HOA Monthly Fee is required when HOA is selected';
+      }
+      if (!formData.contactName?.trim()) {
+        errors.contactName = 'Contact name is required';
+      }
+      if (!formData.contactPhone?.trim()) {
+        errors.contactPhone = 'Contact phone number is required';
+      }
+      if (!formData.contactRelation?.trim()) {
+        errors.contactRelation = 'Contact relation to property is required';
       }
       break;
     }
@@ -94,21 +96,27 @@ export function validateStep(step, formData) {
     }
 
     case 4: {
-      // Rental Data
-      if (!formData.strConfidence) {
-        errors.strConfidence = 'STR Data Confidence is required';
-      }
-      if (!formData.turnkeyFurnished) {
-        errors.turnkeyFurnished = 'Turnkey/Furnished status is required';
-      }
+      // Rental Data — STR Zoning, "currently operating as an STR", and Data
+      // Confidence are required. turnkeyFurnished is conditional (shown only
+      // when operating as an STR) so it is not globally required.
       if (!formData.strZoning) {
         errors.strZoning = 'STR Zoning is required';
+      }
+      if (!formData.isOperatingSTR) {
+        errors.isOperatingSTR =
+          'Please indicate if the property is currently operating as an STR';
+      }
+      if (!formData.strConfidence) {
+        errors.strConfidence = 'STR Data Confidence is required';
       }
       break;
     }
 
     case 5: {
       // Photos & Media
+      if (!formData.coverPhoto?.length) {
+        errors.coverPhoto = 'A cover photo is required';
+      }
       if (!formData.interiorImages?.length) {
         errors.interiorImages = 'At least 1 interior photo is required';
       }

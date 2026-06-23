@@ -16,7 +16,7 @@ const AuthContext = createContext(null);
 // Only these roles are permitted to log in to the submitter portal.
 // Any user whose role is not in this list will be rejected and no
 // session will be created for them.
-const ALLOWED_ROLES = ['submitter'];
+// const ALLOWED_ROLES = ['submitter'];
 
 /* -------------------- hooks -------------------- */
 
@@ -35,6 +35,11 @@ function normalizeAuthUser(rawUser) {
   const canonicalRole = getCanonicalRole(
     rawUser.userType ?? rawUser.role ?? rawUser.access
   );
+    // Use permissions stored in DB if any are assigned; otherwise fall back
+  // to the hardcoded role-based defaults (e.g. admin always gets full access).
+  const stored = rawUser.assignedPermissions;
+  const hasStored = stored && Object.values(stored).some(Boolean);
+  const permissions = hasStored ? stored : getPermissionsForRole(canonicalRole);
 
   return {
     user: {
@@ -42,7 +47,7 @@ function normalizeAuthUser(rawUser) {
       role: canonicalRole,
       isSubmitter: canonicalRole === 'submitter',
     },
-    permissions: getPermissionsForRole(canonicalRole),
+    permissions,
   };
 }
 
@@ -53,6 +58,7 @@ export const AuthProvider = ({ children }) => {
 
   const [user, setUser] = useState(null);
   const [permissions, setPermissions] = useState(null);
+  const [roles, setRoles] = useState([]);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [sessionToken, setSessionToken] = useState(
     localStorage.getItem('sessionToken')
@@ -60,7 +66,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [sessionError, setSessionError] = useState(null); // For session invalidation messages
 
+  const PORTAL_TYPE = 'submitter';
+
+  useEffect(() => {
+    authAPI.getPublicRoles(PORTAL_TYPE)
+      .then((res) => setRoles(res.data || []))
+      .catch(() => setRoles([]));
+  }, []);
   /* -------------------- logout -------------------- */
+
+  // Always include the portal type slug so legacy users (role = 'submitter')
+  // remain valid after the client renamed the role to 'real_estate_professional'.
+  const ALLOWED_ROLES = [...new Set([...roles.map(item => item.role_slug), PORTAL_TYPE])];
 
   const logout = useCallback(
     async (message = null) => {
@@ -121,7 +138,7 @@ export const AuthProvider = ({ children }) => {
             // Defensive: if the stored user is not an allowed role
             // (e.g. a client/admin session left over in the same browser),
             // do NOT restore it. Clear it so nothing leaks into the app.
-            if (!ALLOWED_ROLES.includes(normalized.user.role)) {
+           if (ALLOWED_ROLES.length > 0  && !ALLOWED_ROLES.includes(normalized.user.role)) {
               localStorage.removeItem('submitterUser');
               localStorage.removeItem('sessionToken');
               return;
@@ -149,7 +166,7 @@ export const AuthProvider = ({ children }) => {
 
         // Defensive: server returned a profile whose role is not allowed
         // in the submitter portal. Tear down the session immediately.
-        if (!ALLOWED_ROLES.includes(normalized.user.role)) {
+        if (ALLOWED_ROLES.length > 0  && !ALLOWED_ROLES.includes(normalized.user.role)) {
           logout();
           return;
         }
@@ -197,14 +214,13 @@ export const AuthProvider = ({ children }) => {
   const submitterLogin = async (email, password, type = 'submitter') => {
     try {
       const response = await authAPI.submitterLogin(email, password, type);
-
       const normalized = normalizeAuthUser(response);
 
       // Defensive frontend guard: only submitter is allowed here.
       // If the backend lets anything else through, reject it BEFORE we set
       // any user, token, or localStorage state. This guarantees no session
       // is created for a non-submitter user.
-      if (!ALLOWED_ROLES.includes(normalized.user.role)) {
+      if (ALLOWED_ROLES.length > 0 && !ALLOWED_ROLES.includes(normalized.user.role)) {
         return {
           success: false,
           error:
@@ -237,6 +253,8 @@ export const AuthProvider = ({ children }) => {
         success: false,
         error: errorData.error || err.message || 'Login failed',
         code: errorData.code || null,
+        correctPortalUrl: errorData.correctPortalUrl || null,
+        correctPortalName: errorData.correctPortalName || null,
       };
     }
   };
@@ -290,13 +308,13 @@ export const AuthProvider = ({ children }) => {
 
   const value = {
     user,
+    roles,
     permissions,
     token,
     sessionToken,
     loading,
     isAuthenticated: Boolean(user),
     sessionError, // Error message when session is invalidated
-
     login,
     submitterLogin,
     register,
@@ -304,7 +322,6 @@ export const AuthProvider = ({ children }) => {
     updateProfile,
     logout,
     clearSessionError, // Clear session error message after displaying
-
     can,
     hasRole,
   };

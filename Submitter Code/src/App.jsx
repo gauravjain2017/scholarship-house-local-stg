@@ -55,11 +55,11 @@ function App() {
 
           {/* ── Protected routes — layout decided by RoleLayout ── */}
           <Route element={<ProtectedRoute><RoleLayout /></ProtectedRoute>}>
-            <Route path="/my-properties" element={<ProtectedRoute requirePermission="CAN_SUBMIT"><MyProperties /></ProtectedRoute>} />
+            <Route path="/my-properties" element={<ProtectedRoute requirePermission="my_property.can_view"><MyProperties /></ProtectedRoute>} />
             <Route path="/dashboard" element={<Homepage />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/deal-details/:dealId" element={<ProtectedRoute><DealDetailPage /></ProtectedRoute>} />
-            <Route path="/submit" element={<ProtectedRoute requirePermission="CAN_SUBMIT"><SubmitterView /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute requirePermission="my_profile.can_view"><Profile /></ProtectedRoute>} />
+            <Route path="/deal-details/:dealId" element={<ProtectedRoute requirePermission="my_property.can_view"><DealDetailPage /></ProtectedRoute>} />
+            <Route path="/submit" element={<ProtectedRoute requirePermission="submit_property.can_create"><SubmitterView /></ProtectedRoute>} />
 
           </Route>
 

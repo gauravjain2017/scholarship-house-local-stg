@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { dealsAPI } from '../api/deals';
 import { draftsAPI } from '../api/drafts';
 import { submittersAPI } from '../api/submitters';
 import { disputesAPI } from '../api/disputes';
+import { getAdminUsers } from '../api/admin';
 import {
   getPresignedUploadUrl,
   uploadFileToS3WithProgress,
@@ -40,8 +41,13 @@ const USER_TYPE_OPTIONS = [
   { value: 'REALTOR', label: 'Realtor' },
 ];
 
+
 const SubmitterView = () => {
   const { user, hasRole } = useAuth();
+  const [specialistUsers, setAcquisitionSpecialistUsers] = useState([]);
+  const [submitterUsers, setSubmitterUsers] = useState([]);
+  const [selectedSubmitterUser, setSelectedSubmitterUser] = useState('');
+  const [selectedSpecialistUser, setSelectedSpecialistUser] = useState('');
   // console.log('User : ',user?.role)
   const queryClient = useQueryClient();
   const canSubmitOnBehalf =
@@ -51,11 +57,51 @@ const SubmitterView = () => {
   const [submitUnregisteredSeller, setSubmitUnregisteredSeller] =
     useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [confirmUnsubmit, setConfirmUnsubmit] = useState(null);
 
   // Convert camelCase field name to human-readable label
   const fieldToLabel = (field) =>
     field.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()).replace(/_/g, ' ');
+
+ // Format a validation errors object into a readable, vertically-aligned
+  // bulleted list for the notification modal. Returns a JSX node so the
+  // modal renders proper line breaks regardless of its CSS. Falls back to
+  // the provided default message string if the errors object is empty.
+  const formatErrorList = (errorsObj, fallbackMessage) => {
+    const messages = Object.values(errorsObj || {}).filter(Boolean);
+    if (messages.length === 0) return fallbackMessage;
+    if (messages.length === 1) return messages[0];
+    return (
+      <ul
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+          textAlign: 'left',
+        }}
+      >
+        {messages.map((msg, idx) => (
+          <li
+            key={idx}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px',
+              padding: '4px 0',
+              lineHeight: 1.5,
+            }}
+          >
+            <span style={{ color: '#d97706', fontWeight: 700, flexShrink: 0 }}>•</span>
+            <span>{msg}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+
+
 
   // Multi-step wizard state
   const TOTAL_STEPS = 6;
@@ -103,10 +149,19 @@ const SubmitterView = () => {
      LISTING INFO
      =============================== */
     description: '',
+    story: '',
     priorityFirstAccess: true,
     fiftyFiftyPartner: false,
     turnkey: false,
     doneForYou: false,
+
+    /* ===============================
+     PROPERTY CONTACT & SOURCE
+     =============================== */
+    contactName: '',
+    contactPhone: '',
+    contactRelation: '',
+    sourceLink: '',
 
     /* ===============================
      FINANCIAL INFORMATION
@@ -120,6 +175,7 @@ const SubmitterView = () => {
     emd: '',
     downPayment: '',
     financialInfo: '',
+    assignmentFee: '',
 
     /* ===============================
      HOA
@@ -128,32 +184,67 @@ const SubmitterView = () => {
     hoaMonthlyFee: '',
 
     /* ===============================
-     SUBJECT-TO FINANCING
+     CREATIVE FINANCING — PRIMARY MORTGAGE
      =============================== */
-    subjLoanBalance: '',
-    subjInterestRate: '',
-    subjLoanMaturity: '',
-    subjMonthlyPrincipal: '',
-    subjMonthlyInterest: '',
-    subjMonthlyTaxesInsurance: '',
+    hasPrimaryMortgage: '',
+    primaryLoanBalance: '',
+    primaryInterestRate: '',
+    primaryMaturityDate: '',
+    primaryPrincipalInterest: '',
+    primaryTaxesInsurance: '',
 
     /* ===============================
-     SELLER FINANCING
+     CREATIVE FINANCING — SECOND MORTGAGE
      =============================== */
-    sellerLoanAmount: '',
-    sellerInterestRate: '',
-    sellerLoanMaturity: '',
-    sellerMonthlyPayment: '',
-    totalMonthlyPayment: '',
+    hasSecondMortgage: '',
+    secondLoanBalance: '',
+    secondInterestRate: '',
+    secondMaturityDate: '',
+    secondPrincipalInterest: '',
+    secondTaxesInsurance: '',
+
+    /* ===============================
+     CREATIVE FINANCING — SELLER EQUITY
+     =============================== */
+    hasSellerEquity: '',
+    sellerEquityAmount: '',
+    sellerEquityInterestRate: '',
+    sellerEquityMaturityDate: '',
+    sellerEquityPrincipalInterest: '',
+    sellerEquityBalloonYears: '',
+
+    /* ===============================
+     CREATIVE FINANCING — DEAL TERMS
+     =============================== */
+    dealTerms: '',
+    totalStartingMonthlyPayment: '',
 
     /* ===============================
      STR / ZONING
      =============================== */
     strZoning: '',
+    isOperatingSTR: 'no',
     turnkeyFurnished: '',
+    hasStrFinancials: '',
+    strFinancialDocs: [],
 
     // Data confidence (moved to top of STR section)
     strConfidence: '',
+
+    /* ===============================
+     STR KEY METRICS
+     =============================== */
+    averageNightlyRate: '',
+    strAnnualRevenue: '',
+    strMonthlyRevenue: '',
+    strMonthlyUtilities: '',
+    strNOI: '',
+    strCleaningFee: '',
+    strAvgStay: '',
+    strManagementFee: '',
+    strBookingPlatform: '',
+    hasCurrentBookings: '',
+    currentBookingsDescription: '',
 
     /* ===============================
      VACATION RENTAL MARKETS
@@ -195,6 +286,7 @@ const SubmitterView = () => {
     /* ===============================
      MEDIA
      =============================== */
+    coverPhoto: [],
     interiorImages: [],
     exteriorImages: [],
     additionalImages: [],
@@ -227,53 +319,172 @@ const SubmitterView = () => {
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  const isCreativeFinancing = ['subject-to', 'hybrid', 'seller'].includes(
+  const isCreativeFinancing = ['creative', 'subject-to', 'hybrid', 'seller'].includes(
     formData.financingType
   );
 
-  // Restore saved form data on mount
+  // Restore saved form data on mount.
+  // We persist a snapshot ({ formData, currentStep, completedSteps }) to
+  // localStorage every time the user moves between steps. If the session
+  // expires and the user logs back in, this effect rehydrates the wizard
+  // exactly where they left off. The backup is cleared when the property is
+  // successfully submitted or the user explicitly saves a server-side draft.
   useEffect(() => {
-    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (saved) {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!saved) return;
+
       const parsed = JSON.parse(saved);
+
+      // Back-compat: earlier versions stored formData at the top level.
+      // New format wraps it: { formData, currentStep, completedSteps }.
+      const savedFormData = parsed.formData ? parsed.formData : parsed;
+      const savedStep = parsed.currentStep;
+      const savedCompleted = parsed.completedSteps;
 
       setFormData({
         ...defaultFormData,
-        ...parsed,
-        interiorImages: (parsed.interiorImages || []).filter(
+        ...savedFormData,
+        // Media fields hold S3 URL strings after upload. Filter out anything
+        // that isn't a string (e.g. in-flight File objects that can't be
+        // serialized to JSON) so we only restore successfully uploaded media.
+        coverPhoto: (savedFormData.coverPhoto || []).filter(
           (v) => typeof v === 'string'
         ),
-        exteriorImages: (parsed.exteriorImages || []).filter(
+        interiorImages: (savedFormData.interiorImages || []).filter(
           (v) => typeof v === 'string'
         ),
-        additionalImages: (parsed.additionalImages || []).filter(
+        exteriorImages: (savedFormData.exteriorImages || []).filter(
           (v) => typeof v === 'string'
         ),
-        videos: (parsed.videos || []).filter((v) => typeof v === 'string'),
+        additionalImages: (savedFormData.additionalImages || []).filter(
+          (v) => typeof v === 'string'
+        ),
+        videos: (savedFormData.videos || []).filter((v) => typeof v === 'string'),
+        strFinancialDocs: (savedFormData.strFinancialDocs || []).filter(
+          (v) => typeof v === 'string'
+        ),
       });
+
+      // Restore wizard position so the user lands on the step they were on.
+      if (
+        typeof savedStep === 'number' &&
+        savedStep >= 1 &&
+        savedStep <= TOTAL_STEPS
+      ) {
+        setCurrentStep(savedStep);
+      }
+      if (Array.isArray(savedCompleted)) {
+        setCompletedSteps(
+          savedCompleted.filter(
+            (s) => typeof s === 'number' && s >= 1 && s <= TOTAL_STEPS
+          )
+        );
+      }
+    } catch (err) {
+      // Corrupt JSON shouldn't break the form — just start fresh.
+      console.warn('Failed to restore form from localStorage:', err);
+      localStorage.removeItem(LOCAL_STORAGE_KEY);
     }
   }, []);
 
+  // Persist the current wizard state to localStorage. Called whenever the
+  // user navigates between steps (Next / Back) so no entered data is ever
+  // lost to a refresh or an expired session. We accept explicit `nextStep`
+  // and `nextCompleted` args because React state updates are async and we
+  // want to persist the *new* values, not the stale ones from this render.
+  const persistToLocalStorage = (nextStep, nextCompleted) => {
+    try {
+      // Strip non-string entries from media arrays — File objects and the
+      // like don't survive JSON.stringify and would bloat the payload.
+      const serializableFormData = {
+        ...formData,
+        coverPhoto: (formData.coverPhoto || []).filter(
+          (v) => typeof v === 'string'
+        ),
+        interiorImages: (formData.interiorImages || []).filter(
+          (v) => typeof v === 'string'
+        ),
+        exteriorImages: (formData.exteriorImages || []).filter(
+          (v) => typeof v === 'string'
+        ),
+        additionalImages: (formData.additionalImages || []).filter(
+          (v) => typeof v === 'string'
+        ),
+        videos: (formData.videos || []).filter((v) => typeof v === 'string'),
+        strFinancialDocs: (formData.strFinancialDocs || []).filter(
+          (v) => typeof v === 'string'
+        ),
+      };
+
+      const snapshot = {
+        formData: serializableFormData,
+        currentStep: typeof nextStep === 'number' ? nextStep : currentStep,
+        completedSteps: Array.isArray(nextCompleted)
+          ? nextCompleted
+          : completedSteps,
+        savedAt: new Date().toISOString(),
+      };
+
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(snapshot));
+    } catch (err) {
+      // Quota exceeded or storage disabled — non-fatal, just log.
+      console.warn('Failed to persist form to localStorage:', err);
+    }
+  };
+
+  // Tracks the previous value of isCreativeFinancing so the wipe effect can
+  // distinguish "this is the first time we're seeing this value" from
+  // "the user just toggled financingType to a non-creative option".
+  // Starts as `null` (never seen) so the first run is always a no-op — this
+  // prevents the wipe from clobbering values restored from localStorage on
+  // mount, even though the restore effect runs in the same effect pass.
+  const prevCreativeRef = useRef(null);
+
   useEffect(() => {
-    if (!isCreativeFinancing) {
-      setFormData((prev) => ({
-        ...prev,
-        subjLoanBalance: '',
-        subjInterestRate: '',
-        subjLoanMaturity: '',
-        subjMonthlyPrincipal: '',
-        subjMonthlyInterest: '',
-        subjMonthlyTaxesInsurance: '',
-        sellerLoanAmount: '',
-        sellerInterestRate: '',
-        sellerLoanMaturity: '',
-        sellerMonthlyPayment: '',
-        totalMonthlyPayment: '',
+    const prev = prevCreativeRef.current;
+    prevCreativeRef.current = isCreativeFinancing;
+
+    // First run (mount): just record the value and bail. We never wipe on
+    // mount because the value we'd be reacting to is whatever was in state
+    // *before* the restore effect has finished applying localStorage data.
+    if (prev === null) return;
+
+    // Only wipe when the user actively transitions from a creative financing
+    // type to a non-creative one. No transition → nothing to clean up.
+    if (prev === true && isCreativeFinancing === false) {
+      setFormData((prevData) => ({
+        ...prevData,
+        expectedCloseDate: '',
+        emd: '',
+        downPayment: '',
+        assignmentFee: '',
+        hasPrimaryMortgage: '',
+        primaryLoanBalance: '',
+        primaryInterestRate: '',
+        primaryMaturityDate: '',
+        primaryPrincipalInterest: '',
+        primaryTaxesInsurance: '',
+        hasSecondMortgage: '',
+        secondLoanBalance: '',
+        secondInterestRate: '',
+        secondMaturityDate: '',
+        secondPrincipalInterest: '',
+        secondTaxesInsurance: '',
+        hasSellerEquity: '',
+        sellerEquityAmount: '',
+        sellerEquityInterestRate: '',
+        sellerEquityMaturityDate: '',
+        sellerEquityPrincipalInterest: '',
+        sellerEquityBalloonYears: '',
+        dealTerms: '',
+        totalStartingMonthlyPayment: '',
       }));
     }
   }, [isCreativeFinancing]);
 
   const [errors, setErrors] = useState({});
+  const [assignUserErrors, setAssignUserErrors] = useState({ submitterUser: '', specialistUser: '' });
   const [resetKey, setResetKey] = useState(0);
   const [submitProgress, setSubmitProgress] = useState({
     stage: null, // Current stage label (e.g., 'Interior Photos')
@@ -292,30 +503,32 @@ const SubmitterView = () => {
   // allows partial/empty fields — we coerce numbers with numOrNull and
   // pass strings through as-is. Media should already be normalized to URLs.
   const buildDraftPayload = ({
+    coverPhoto,
     interiorImages,
     exteriorImages,
     additionalImages,
     videos,
+    strFinancialDocs,
   }) => {
     const submitterInfo = submitAsOther
       ? {
-          fullName: formData.submitterFullName,
-          email: formData.submitterEmail,
-          phone: formData.submitterPhone,
-          userType: formData.submitterUserType,
-        }
+        fullName: formData.submitterFullName,
+        email: formData.submitterEmail,
+        phone: formData.submitterPhone,
+        userType: formData.submitterUserType,
+      }
       : {
-          fullName: user?.name || '',
-          email: user?.email || '',
-          phone: user?.phone || '',
-          userType: user?.userType || '',
-        };
+        fullName: user?.name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        userType: user?.userType || '',
+      };
 
     // Title for list display when user hasn't filled in an address yet
     const derivedTitle =
       [formData.bedrooms && `${formData.bedrooms} Bed`,
-       formData.bathrooms && `${formData.bathrooms} Bath`,
-       formData.city]
+      formData.bathrooms && `${formData.bathrooms} Bath`,
+      formData.city]
         .filter(Boolean)
         .join(', ') ||
       formData.streetAddress ||
@@ -335,6 +548,11 @@ const SubmitterView = () => {
       // Property
       category: formData.category || null,
       description: formData.description || '',
+      story: formData.story || '',
+      contactName: formData.contactName || '',
+      contactPhone: formData.contactPhone || '',
+      contactRelation: formData.contactRelation || '',
+      sourceLink: formData.sourceLink || '',
       streetAddress: formData.streetAddress || '',
       addressLine2: formData.addressLine2 || null,
       city: formData.city || '',
@@ -353,29 +571,63 @@ const SubmitterView = () => {
       emd: numOrNull(formData.emd),
       downPayment: numOrNull(formData.downPayment),
       financialInfo: formData.financialInfo || '',
+      assignmentFee: numOrNull(formData.assignmentFee),
 
       // HOA
       isHOA: !!formData.isHOA,
       hoaMonthlyFee: formData.isHOA ? numOrNull(formData.hoaMonthlyFee) : null,
 
-      // Subject-to / seller financing
-      subjLoanBalance: numOrNull(formData.subjLoanBalance),
-      subjInterestRate: numOrNull(formData.subjInterestRate),
-      subjLoanMaturity: formData.subjLoanMaturity || null,
-      subjMonthlyPrincipal: numOrNull(formData.subjMonthlyPrincipal),
-      subjMonthlyInterest: numOrNull(formData.subjMonthlyInterest),
-      subjMonthlyTaxesInsurance: numOrNull(formData.subjMonthlyTaxesInsurance),
-      sellerLoanAmount: numOrNull(formData.sellerLoanAmount),
-      sellerInterestRate: numOrNull(formData.sellerInterestRate),
-      sellerLoanMaturity: formData.sellerLoanMaturity || null,
-      sellerMonthlyPayment: numOrNull(formData.sellerMonthlyPayment),
-      totalMonthlyPayment: numOrNull(formData.totalMonthlyPayment),
+      // Creative financing — Primary mortgage
+      hasPrimaryMortgage: formData.hasPrimaryMortgage || null,
+      primaryLoanBalance: numOrNull(formData.primaryLoanBalance),
+      primaryInterestRate: numOrNull(formData.primaryInterestRate),
+      primaryMaturityDate: formData.primaryMaturityDate || null,
+      primaryPrincipalInterest: numOrNull(formData.primaryPrincipalInterest),
+      primaryTaxesInsurance: numOrNull(formData.primaryTaxesInsurance),
+
+      // Creative financing — Second mortgage
+      hasSecondMortgage: formData.hasSecondMortgage || null,
+      secondLoanBalance: numOrNull(formData.secondLoanBalance),
+      secondInterestRate: numOrNull(formData.secondInterestRate),
+      secondMaturityDate: formData.secondMaturityDate || null,
+      secondPrincipalInterest: numOrNull(formData.secondPrincipalInterest),
+      secondTaxesInsurance: numOrNull(formData.secondTaxesInsurance),
+
+      // Creative financing — Seller equity
+      hasSellerEquity: formData.hasSellerEquity || null,
+      sellerEquityAmount: numOrNull(formData.sellerEquityAmount),
+      sellerEquityInterestRate: numOrNull(formData.sellerEquityInterestRate),
+      sellerEquityMaturityDate: formData.sellerEquityMaturityDate || null,
+      sellerEquityPrincipalInterest: numOrNull(
+        formData.sellerEquityPrincipalInterest
+      ),
+      sellerEquityBalloonYears: formData.sellerEquityBalloonYears || null,
+
+      // Creative financing — Deal terms
+      dealTerms: formData.dealTerms || '',
+      totalStartingMonthlyPayment: numOrNull(formData.totalStartingMonthlyPayment),
 
       // STR
       strZoning: formData.strZoning || null,
+      isOperatingSTR: formData.isOperatingSTR || null,
       turnkeyFurnished: formData.turnkeyFurnished || null,
+      hasStrFinancials: formData.hasStrFinancials || null,
       strConfidence: formData.strConfidence || null,
       occupancyRate: numOrNull(formData.occupancyRate),
+
+      // STR key metrics
+      averageNightlyRate: numOrNull(formData.averageNightlyRate),
+      strAnnualRevenue: numOrNull(formData.strAnnualRevenue),
+      strMonthlyRevenue: numOrNull(formData.strMonthlyRevenue),
+      strMonthlyUtilities: numOrNull(formData.strMonthlyUtilities),
+      strNOI: numOrNull(formData.strNOI),
+      strCleaningFee: numOrNull(formData.strCleaningFee),
+      strAvgStay: numOrNull(formData.strAvgStay),
+      strManagementFee: numOrNull(formData.strManagementFee),
+      strBookingPlatform: formData.strBookingPlatform || null,
+      hasCurrentBookings: formData.hasCurrentBookings || null,
+      currentBookingsDescription: formData.currentBookingsDescription || '',
+
       vacationRentalMarkets: formData.vacationRentalMarkets || [],
       travelMotivations: formData.travelMotivations || [],
       strListingLink: formData.strListingLink || '',
@@ -391,10 +643,12 @@ const SubmitterView = () => {
       autoTags: formData.autoTags || [],
 
       // Media (already-uploaded URLs)
+      coverPhoto,
       interiorImages,
       exteriorImages,
       additionalImages,
       videos,
+      strFinancialDocs,
 
       // Flags
       priorityFirstAccess: formData.priorityFirstAccess,
@@ -428,7 +682,7 @@ const SubmitterView = () => {
         setErrors(stepErrors);
         showNotification(
           'warning',
-          'Please fill in all required fields before saving your draft.',
+          formatErrorList(stepErrors, 'Please fill in all required fields before saving your draft.'),
           'Required Fields'
         );
         const ref = errorRefs.current[firstErrorField];
@@ -445,29 +699,41 @@ const SubmitterView = () => {
     try {
       // Normalize media: convert any File objects to uploaded URLs.
       // normalizeMediaArray already handles the mix of File + URL entries.
-      const [interiorImages, exteriorImages, additionalImages, videos] =
-        await Promise.all([
-          normalizeMediaArray(formData.interiorImages),
-          normalizeMediaArray(formData.exteriorImages),
-          normalizeMediaArray(formData.additionalImages),
-          normalizeMediaArray(formData.videos),
-        ]);
+      const [
+        coverPhoto,
+        interiorImages,
+        exteriorImages,
+        additionalImages,
+        videos,
+        strFinancialDocs,
+      ] = await Promise.all([
+        normalizeMediaArray(formData.coverPhoto),
+        normalizeMediaArray(formData.interiorImages),
+        normalizeMediaArray(formData.exteriorImages),
+        normalizeMediaArray(formData.additionalImages),
+        normalizeMediaArray(formData.videos),
+        normalizeMediaArray(formData.strFinancialDocs),
+      ]);
 
       // Reflect uploaded URLs back into form state so the UI no longer
       // holds raw File objects after save.
       setFormData((prev) => ({
         ...prev,
+        coverPhoto,
         interiorImages,
         exteriorImages,
         additionalImages,
         videos,
+        strFinancialDocs,
       }));
 
       const payload = buildDraftPayload({
+        coverPhoto,
         interiorImages,
         exteriorImages,
         additionalImages,
         videos,
+        strFinancialDocs,
       });
 
       let savedDraft;
@@ -484,6 +750,10 @@ const SubmitterView = () => {
 
       // Clear stale localStorage backup — backend is now source of truth
       localStorage.removeItem(LOCAL_STORAGE_KEY);
+
+      // Re-enable the Resume button for this draft now that the in-memory
+      // edits have been persisted to the backend.
+      setResumedDraftId(null);
 
       showNotification('success', 'Your draft has been saved.', 'Draft Saved');
     } catch (err) {
@@ -506,6 +776,9 @@ const SubmitterView = () => {
       ...mapPropertyToFormData(draft),
       // mapPropertyToFormData is tuned for `properties` records; make sure
       // draft-specific fields flow through.
+      coverPhoto: (draft.coverPhoto || []).filter(
+        (v) => typeof v === 'string'
+      ),
       interiorImages: (draft.interiorImages || []).filter(
         (v) => typeof v === 'string'
       ),
@@ -516,9 +789,13 @@ const SubmitterView = () => {
         (v) => typeof v === 'string'
       ),
       videos: (draft.videos || []).filter((v) => typeof v === 'string'),
+      strFinancialDocs: (draft.strFinancialDocs || []).filter(
+        (v) => typeof v === 'string'
+      ),
     };
     setFormData(restored);
     setCurrentDraftId(draft.id);
+    setResumedDraftId(draft.id);
     setErrors({});
     setResetKey((prev) => prev + 1);
 
@@ -546,6 +823,7 @@ const SubmitterView = () => {
     try {
       await draftsAPI.deleteDraft(draftId);
       if (currentDraftId === draftId) setCurrentDraftId(null);
+      if (resumedDraftId === draftId) setResumedDraftId(null);
       queryClient.invalidateQueries(['myDrafts']);
       setConfirmDeleteDraft(null);
       showNotification('success', 'Draft deleted.', 'Draft Deleted');
@@ -566,13 +844,21 @@ const SubmitterView = () => {
   // a saved draft or after the first Save Draft click, so subsequent saves
   // update the same record rather than creating duplicates.
   const [currentDraftId, setCurrentDraftId] = useState(null);
+  // Tracks the draft id that was just resumed and hasn't been re-saved yet.
+  // Used to disable that draft's Resume button until the user clicks Save Draft.
+  const [resumedDraftId, setResumedDraftId] = useState(null);
   // Draft pending deletion confirmation
   const [confirmDeleteDraft, setConfirmDeleteDraft] = useState(null);
 
   // Notification modal state
-  const [notification, setNotification] = useState({ open: false, type: 'success', title: '', message: '' });
-  const showNotification = (type, message, title = '') => setNotification({ open: true, type, title, message });
-  const closeNotification = () => setNotification((prev) => ({ ...prev, open: false }));
+  const [notification, setNotification] = useState({ open: false, type: 'success', title: '', message: '', onClose: null, closeOnBackdrop: true });
+  const showNotification = (type, message, title = '', onClose = null, closeOnBackdrop = true) =>
+    setNotification({ open: true, type, title, message, onClose, closeOnBackdrop });
+  const closeNotification = () => {
+    const cb = notification.onClose;
+    setNotification((prev) => ({ ...prev, open: false, onClose: null }));
+    cb?.();
+  };
 
   // Duplicate address detection state
   const [duplicateModalOpen, setDuplicateModalOpen] = useState(false);
@@ -580,18 +866,6 @@ const SubmitterView = () => {
   const [duplicateProperty, setDuplicateProperty] = useState(null);
   const [pendingDealData, setPendingDealData] = useState(null);
   const [duplicateCheckLoading, setDuplicateCheckLoading] = useState(false);
-
-  // Calculate annual revenue and NOI (must be after formData is defined)
-  const annualRevenue = (() => {
-    const rate = parseFloat(formData.strAvgDailyRate) || 0;
-    const occ = parseFloat(formData.strOccupancyRate) || 0;
-    return rate && occ ? (rate * 365 * (occ / 100)).toFixed(2) : '';
-  })();
-  const netOperatingIncome = (() => {
-    const ar = parseFloat(annualRevenue) || 0;
-    const op = parseFloat(formData.strOperatingExpenses) || 0;
-    return ar ? (ar - op).toFixed(2) : '';
-  })();
 
   // Fetch user's previous submissions
   // Get the user's email from the form or context (here from formData)
@@ -630,6 +904,37 @@ const SubmitterView = () => {
     setIsSubmitted(false);
     // Clear any draft-edit tracking so this is a truly fresh submission
     setCurrentDraftId(null);
+    setResumedDraftId(null);
+    // Clear the localStorage backup so the new submission starts blank
+    // instead of rehydrating the just-submitted property on next mount.
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+  };
+
+  // Reset the entire wizard: wipe every field across all steps, drop the
+  // localStorage backup, and send the user back to step 1. Triggered by the
+  // "Reset" button after confirmation. Unlike Cancel (which exits the
+  // submission flow), Reset is meant for users who want to start the form
+  // over from scratch while staying in the submission view.
+  const handleResetForm = () => {
+    setFormData({ ...defaultFormData });
+    setErrors({});
+    setResetKey((prev) => prev + 1);
+    setCurrentStep(1);
+    setCompletedSteps([]);
+    // Drop any draft-edit linkage — a reset produces a fresh submission,
+    // not an update to an existing server-side draft.
+    setCurrentDraftId(null);
+    setResumedDraftId(null);
+    // Clear the prefill snapshot so the wizard doesn't rehydrate the data
+    // we just wiped on the next mount.
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    setConfirmReset(false);
+    scrollToTop();
+    showNotification(
+      'success',
+      'Form has been reset. All steps are now empty.',
+      'Form Reset'
+    );
   };
 
   const createDealMutation = useMutation({
@@ -649,6 +954,7 @@ const SubmitterView = () => {
         }
         queryClient.invalidateQueries(['myDrafts']);
         setCurrentDraftId(null);
+        setResumedDraftId(null);
       }
 
       setErrors({});
@@ -678,31 +984,56 @@ const SubmitterView = () => {
 
   const handleNextStep = () => {
     // Validate current step
-    const { errors: stepErrors, firstErrorField } = validateStep(currentStep, formData);
-    if (firstErrorField) {
-      setErrors(stepErrors);
-      showNotification('warning', 'Please fill in all required fields before proceeding.', 'Required Fields');
-      const ref = errorRefs.current[firstErrorField];
-      if (ref) {
-        ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => ref.focus?.({ preventScroll: true }), 300);
+
+    if (currentStep === 1 && submitAsOther) {
+      const newAssignErrors = { submitterUser: '', specialistUser: '' };
+      if (!selectedSubmitterUser) newAssignErrors.submitterUser = 'Please select a Real Estate Professional.';
+      // if (!selectedSpecialistUser) newAssignErrors.specialistUser = 'Please select an Acquisition Specialist.';
+      if (newAssignErrors.submitterUser) {
+        setAssignUserErrors(newAssignErrors);
+        showNotification('warning', 'Please assign both a Real Estate Professional and an Acquisition Specialist before proceeding.', 'Required Fields');
+        return;
       }
-      return;
+      setAssignUserErrors({ submitterUser: '', specialistUser: '' });
     }
 
     // Clear errors and mark step completed
     setErrors({});
-    setCompletedSteps((prev) =>
-      prev.includes(currentStep) ? prev : [...prev, currentStep]
-    );
+    const nextCompleted = completedSteps.includes(currentStep)
+      ? completedSteps
+      : [...completedSteps, currentStep];
+    setCompletedSteps(nextCompleted);
+
+    // Arm the submit guard for one tick. Advancing from step 4 to step 5 turns
+    // the "Next" button into a type="submit" button at the same DOM position;
+    // React flushes that re-render synchronously during the same click, so the
+    // browser then fires a spurious form submit on the step we just landed on.
+    // The guard makes handleSubmit ignore that one submit. We clear it on the
+    // next tick (after any spurious submit has fired) so a later, deliberate
+    // "Submit" click still goes through.
     justTransitioned.current = true;
-    setCurrentStep((prev) => Math.min(prev + 1, TOTAL_STEPS));
+
+    const nextStep = Math.min(currentStep + 1, TOTAL_STEPS);
+    setCurrentStep(nextStep);
+
+    // Persist the validated step's data so nothing is lost if the session
+    // expires or the tab is closed before final submission.
+    persistToLocalStorage(nextStep, nextCompleted);
+
     scrollToTop();
+
+    setTimeout(() => {
+      justTransitioned.current = false;
+    }, 0);
   };
 
   const handlePrevStep = () => {
     setErrors({});
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    const nextStep = Math.max(currentStep - 1, 1);
+    setCurrentStep(nextStep);
+    // Persist on Back as well — any data the user typed on the current step
+    // should survive even if they navigate backwards and then close the tab.
+    persistToLocalStorage(nextStep, completedSteps);
     scrollToTop();
   };
 
@@ -718,17 +1049,17 @@ const SubmitterView = () => {
   };
   const submitter = submitAsOther
     ? {
-        fullName: formData.submitterFullName,
-        email: formData.submitterEmail,
-        phone: formData.submitterPhone,
-        userType: formData.submitterUserType,
-      }
+      fullName: formData.submitterFullName,
+      email: formData.submitterEmail,
+      phone: formData.submitterPhone,
+      userType: formData.submitterUserType,
+    }
     : {
-        fullName: user?.name || '',
-        email: user?.email || '',
-        phone: user?.phone || '',
-        userType: user?.userType || '',
-      };
+      fullName: user?.name || '',
+      email: user?.email || '',
+      phone: user?.phone || '',
+      userType: user?.userType || '',
+    };
 
   const validateSubmitterOverride = async () => {
     if (!submitAsOther) return true;
@@ -794,6 +1125,11 @@ const SubmitterView = () => {
    LISTING INFO
    =============================== */
     description: deal.description || '',
+    story: deal.story || '',
+    contactName: deal.contactName || '',
+    contactPhone: deal.contactPhone || '',
+    contactRelation: deal.contactRelation || '',
+    sourceLink: deal.sourceLink || '',
     priorityFirstAccess: !!deal.priorityFirstAccess,
     fiftyFiftyPartner: !!deal.fiftyFiftyPartner,
     turnkey: deriveTurnkey(formData.turnkeyFurnished),
@@ -808,6 +1144,7 @@ const SubmitterView = () => {
     emd: deal.emd?.toString() || '',
     downPayment: deal.downPayment?.toString() || '',
     financialInfo: deal.financialInfo || '',
+    assignmentFee: deal.assignmentFee?.toString() || '',
 
     /* ===============================
    HOA
@@ -816,32 +1153,69 @@ const SubmitterView = () => {
     hoaMonthlyFee: deal.hoaMonthlyFee?.toString() || '',
 
     /* ===============================
-   SUBJECT-TO FINANCING
+   CREATIVE FINANCING — PRIMARY MORTGAGE
    =============================== */
-    subjLoanBalance: deal.subjLoanBalance?.toString() || '',
-    subjInterestRate: deal.subjInterestRate?.toString() || '',
-    subjLoanMaturity: deal.subjLoanMaturity || '',
-    subjMonthlyPrincipal: deal.subjMonthlyPrincipal?.toString() || '',
-    subjMonthlyInterest: deal.subjMonthlyInterest?.toString() || '',
-    subjMonthlyTaxesInsurance: deal.subjMonthlyTaxesInsurance?.toString() || '',
+    hasPrimaryMortgage: deal.hasPrimaryMortgage || '',
+    primaryLoanBalance: deal.primaryLoanBalance?.toString() || '',
+    primaryInterestRate: deal.primaryInterestRate?.toString() || '',
+    primaryMaturityDate: deal.primaryMaturityDate || '',
+    primaryPrincipalInterest: deal.primaryPrincipalInterest?.toString() || '',
+    primaryTaxesInsurance: deal.primaryTaxesInsurance?.toString() || '',
 
     /* ===============================
-   SELLER FINANCING
+   CREATIVE FINANCING — SECOND MORTGAGE
    =============================== */
-    sellerLoanAmount: deal.sellerLoanAmount?.toString() || '',
-    sellerInterestRate: deal.sellerInterestRate?.toString() || '',
-    sellerLoanMaturity: deal.sellerLoanMaturity || '',
-    sellerMonthlyPayment: deal.sellerMonthlyPayment?.toString() || '',
-    totalMonthlyPayment: deal.totalMonthlyPayment?.toString() || '',
+    hasSecondMortgage: deal.hasSecondMortgage || '',
+    secondLoanBalance: deal.secondLoanBalance?.toString() || '',
+    secondInterestRate: deal.secondInterestRate?.toString() || '',
+    secondMaturityDate: deal.secondMaturityDate || '',
+    secondPrincipalInterest: deal.secondPrincipalInterest?.toString() || '',
+    secondTaxesInsurance: deal.secondTaxesInsurance?.toString() || '',
+
+    /* ===============================
+   CREATIVE FINANCING — SELLER EQUITY
+   =============================== */
+    hasSellerEquity: deal.hasSellerEquity || '',
+    sellerEquityAmount: deal.sellerEquityAmount?.toString() || '',
+    sellerEquityInterestRate: deal.sellerEquityInterestRate?.toString() || '',
+    sellerEquityMaturityDate: deal.sellerEquityMaturityDate || '',
+    sellerEquityPrincipalInterest:
+      deal.sellerEquityPrincipalInterest?.toString() || '',
+    sellerEquityBalloonYears: deal.sellerEquityBalloonYears?.toString() || '',
+
+    /* ===============================
+   CREATIVE FINANCING — DEAL TERMS
+   =============================== */
+    dealTerms: deal.dealTerms || '',
+    totalStartingMonthlyPayment: deal.totalStartingMonthlyPayment?.toString() || '',
 
     /* ===============================
    STR / ZONING
    =============================== */
     strZoning: deal.strZoning || '',
+    isOperatingSTR: deal.isOperatingSTR || 'no',
     turnkeyFurnished: deal.turnkeyFurnished || '',
+    hasStrFinancials: deal.hasStrFinancials || '',
+    strFinancialDocs: (deal.strFinancialDocs || []).filter(
+      (v) => typeof v === 'string'
+    ),
     strConfidence: deal.strConfidence || '',
     occupancyRate: deal.occupancyRate?.toString() || '',
-    // averageNightlyRate: deal.averageNightlyRate?.toString() || '',
+
+    /* ===============================
+   STR KEY METRICS
+   =============================== */
+    averageNightlyRate: deal.averageNightlyRate?.toString() || '',
+    strAnnualRevenue: deal.strAnnualRevenue?.toString() || '',
+    strMonthlyRevenue: deal.strMonthlyRevenue?.toString() || '',
+    strMonthlyUtilities: deal.strMonthlyUtilities?.toString() || '',
+    strNOI: deal.strNOI?.toString() || '',
+    strCleaningFee: deal.strCleaningFee?.toString() || '',
+    strAvgStay: deal.strAvgStay?.toString() || '',
+    strManagementFee: deal.strManagementFee?.toString() || '',
+    strBookingPlatform: deal.strBookingPlatform || '',
+    hasCurrentBookings: deal.hasCurrentBookings || '',
+    currentBookingsDescription: deal.currentBookingsDescription || '',
 
     /* ===============================
    VACATION RENTAL MARKETS
@@ -877,6 +1251,7 @@ const SubmitterView = () => {
     /* ===============================
    MEDIA
    =============================== */
+    coverPhoto: deal.coverPhoto || [],
     interiorImages: deal.interiorImages || [],
     exteriorImages: deal.exteriorImages || [],
     additionalImages: deal.additionalImages || [],
@@ -943,18 +1318,25 @@ const SubmitterView = () => {
     },
   });
 
-    const FIELD_TO_STEP = {
-    submitterRelationship: 1, category: 1, bedrooms: 1, bathrooms: 1, squareFootage: 1, description: 1, expiry_date: 1, yearBuilt: 1,
+  const FIELD_TO_STEP = {
+    submitterRelationship: 1, category: 1, bedrooms: 1, bathrooms: 1, squareFootage: 1, description: 1, story: 1, expiry_date: 1, yearBuilt: 1,
+    isHOA: 1, hoaMonthlyFee: 1,
+    contactName: 1, contactPhone: 1, contactRelation: 1, sourceLink: 1,
     streetAddress: 2, addressLine2: 2, city: 2, stateRegion: 2, postalCode: 2,
-    price: 3, financingType: 3, emd: 3, downPayment: 3, expectedCloseDate: 3, financialInfo: 3,
-    isHOA: 3, hoaMonthlyFee: 3,
-    subjLoanBalance: 3, subjInterestRate: 3, subjLoanMaturity: 3,
-    subjMonthlyPrincipal: 3, subjMonthlyInterest: 3, subjMonthlyTaxesInsurance: 3,
-    sellerLoanAmount: 3, sellerInterestRate: 3, sellerLoanMaturity: 3,
-    sellerMonthlyPayment: 3, totalMonthlyPayment: 3,
-    strConfidence: 4, turnkeyFurnished: 4, strZoning: 4,
-    occupancyRate: 4, averageNightlyRate: 4, managementCommissionPercent: 4,
-    interiorImages: 5, exteriorImages: 5, additionalImages: 5, videos: 5,
+    price: 3, financingType: 3, emd: 3, downPayment: 3, expectedCloseDate: 3, financialInfo: 3, assignmentFee: 3,
+    hasPrimaryMortgage: 3, primaryLoanBalance: 3, primaryInterestRate: 3, primaryMaturityDate: 3,
+    primaryPrincipalInterest: 3, primaryTaxesInsurance: 3,
+    hasSecondMortgage: 3, secondLoanBalance: 3, secondInterestRate: 3, secondMaturityDate: 3,
+    secondPrincipalInterest: 3, secondTaxesInsurance: 3,
+    hasSellerEquity: 3, sellerEquityAmount: 3, sellerEquityInterestRate: 3, sellerEquityMaturityDate: 3,
+    sellerEquityPrincipalInterest: 3, sellerEquityBalloonYears: 3,
+    dealTerms: 3, totalStartingMonthlyPayment: 3,
+    strZoning: 4, isOperatingSTR: 4, turnkeyFurnished: 4, hasStrFinancials: 4, strConfidence: 4,
+    occupancyRate: 4, averageNightlyRate: 4, strAnnualRevenue: 4, strMonthlyRevenue: 4,
+    strMonthlyUtilities: 4, strNOI: 4, strCleaningFee: 4, strAvgStay: 4, strManagementFee: 4,
+    strBookingPlatform: 4, strFinancialDocs: 4,
+    hasCurrentBookings: 4, currentBookingsDescription: 4,
+    coverPhoto: 5, interiorImages: 5, exteriorImages: 5, additionalImages: 5, videos: 5,
   };
 
   const validateForm = () => {
@@ -970,7 +1352,10 @@ const SubmitterView = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Ignore form submissions triggered by Enter key repeat after a step transition
+    // Swallow the spurious submit that the browser fires immediately after a
+    // step transition (see handleNextStep — the advancing button becomes a
+    // submit button mid-click). The guard is armed for a single tick, so a
+    // deliberate "Submit" click on the final step always goes through.
     if (justTransitioned.current) {
       justTransitioned.current = false;
       return;
@@ -984,43 +1369,92 @@ const SubmitterView = () => {
 
     if (isSubmitting || isSaving) return;
 
-    // Validate current step first (e.g. photos on step 5)
-    const { errors: stepErrors, firstErrorField: stepErrorField } = validateStep(currentStep, formData);
-    if (stepErrorField) {
-      setErrors(stepErrors);
-      showNotification('warning', 'Please fill in all required fields before submitting.', 'Required Fields');
-      const ref = errorRefs.current[stepErrorField];
-      if (ref) {
-        ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        setTimeout(() => ref.focus?.({ preventScroll: true }), 300);
+   
+
+
+    // Validate all steps before submitting
+    const STEP_LABELS = {
+      1: 'Property Information',
+      2: 'Location',
+      3: 'Financial Information',
+      4: 'Rental Data',
+      5: 'Photos & Media',
+    };
+
+    const allErrors = {};
+    let firstErrorStep = null;
+    let firstErrorField = null;
+
+    for (let step = 1; step <= 5; step++) {
+      const { errors: sErrors, firstErrorField: sFirst } = validateStep(step, formData);
+      if (sFirst) {
+        Object.assign(allErrors, sErrors);
+        if (firstErrorStep === null) {
+          firstErrorStep = step;
+          firstErrorField = sFirst;
+        }
       }
+    }
+
+    if (firstErrorField) {
+      setErrors(allErrors);
+
+      const errorsByStep = {};
+      Object.entries(allErrors).forEach(([field, msg]) => {
+        const step = FIELD_TO_STEP[field] || 1;
+        if (!errorsByStep[step]) errorsByStep[step] = [];
+        errorsByStep[step].push(msg);
+      });
+
+      const errorContent = (
+        <div>
+          <p className="mb-4 text-gray-600">
+           Please complete the following required fields before submitting.
+          </p>
+          <div className="space-y-3">
+            {Object.entries(errorsByStep).map(([step, msgs]) => (
+              <div
+                key={step}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
+              >
+                <div className="font-semibold text-amber-700 mb-2">
+                  Step {step} — {STEP_LABELS[step]}
+                </div>
+                <ul className="space-y-1.5">
+                  {msgs.map((msg, i) => (
+                    <li key={i} className="flex items-start gap-2 leading-snug">
+                      <span className="text-amber-500 font-bold flex-shrink-0 mt-0.5">•</span>
+                      <span className="text-gray-700">{msg}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+      const goToFirstError = () => {
+        const needsStepChange = firstErrorStep !== currentStep;
+        if (needsStepChange) {
+          setCurrentStep(firstErrorStep);
+          scrollToTop();
+        }
+        setTimeout(() => {
+          const ref = errorRefs.current[firstErrorField];
+          if (ref) {
+            ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => ref.focus?.({ preventScroll: true }), 300);
+          }
+        }, needsStepChange ? 150 : 0);
+      };
+
+      showNotification('warning', errorContent, 'Required Fields Missing', goToFirstError, false);
+
       return;
     }
 
     setIsSubmitting(true);
-
-    const firstErrorField = validateForm();
-    if (firstErrorField) {
-      // Navigate to the step that contains the first error
-      const errorStep = FIELD_TO_STEP[firstErrorField] || currentStep;
-      if (errorStep !== currentStep) {
-        setCurrentStep(errorStep);
-        scrollToTop();
-      }
-      
-      showNotification('warning', 'Please fix the errors in the form before submitting.', 'Validation Error');
-      setTimeout(() => {
-        const ref = errorRefs.current[firstErrorField];
-        if (ref) {
-          ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setTimeout(() => ref.focus?.({ preventScroll: true }), 300);
-        }
-      }, errorStep !== currentStep ? 100 : 0);
-
-
-      setIsSubmitting(false);
-      return;
-    }
 
     try {
       await validateSubmitterOverride();
@@ -1037,7 +1471,7 @@ const SubmitterView = () => {
       });
       setDuplicateCheckLoading(false);
 
-      console.log('duplicateResult : ',duplicateResult)
+      console.log('duplicateResult : ', duplicateResult)
       if (duplicateResult.isDuplicate) {
         // Store form data for later and show duplicate modal
         setDuplicateProperty(duplicateResult.existingProperty);
@@ -1066,9 +1500,14 @@ const SubmitterView = () => {
   const proceedWithSubmission = async () => {
     try {
 
-      
+
 
       setIsSubmitting(true);
+
+      const coverPhoto = await uploadWithProgress(
+        'Cover Photo',
+        formData.coverPhoto
+      );
 
       const interiorImages = await uploadWithProgress(
         'Interior Photos',
@@ -1087,19 +1526,24 @@ const SubmitterView = () => {
 
       const videos = await uploadWithProgress('Videos', formData.videos);
 
+      const strFinancialDocs = await uploadWithProgress(
+        'STR Financial Documents',
+        formData.strFinancialDocs
+      );
+
       const submitter = submitAsOther
         ? {
-            fullName: formData.submitterFullName,
-            email: formData.submitterEmail,
-            phone: formData.submitterPhone,
-            userType: formData.submitterUserType,
-          }
+          fullName: formData.submitterFullName,
+          email: formData.submitterEmail,
+          phone: formData.submitterPhone,
+          userType: formData.submitterUserType,
+        }
         : {
-            fullName: user?.name || '',
-            email: user?.email || '',
-            phone: user?.phone || '',
-            userType: user?.userType || '',
-          };
+          fullName: user?.name || '',
+          email: user?.email || '',
+          phone: user?.phone || '',
+          userType: user?.userType || '',
+        };
 
       const dealData = {
         /* ===============================
@@ -1113,12 +1557,19 @@ const SubmitterView = () => {
 
         submittedByAdmin: submitAsOther,
         submittedByAdminEmail: submitAsOther ? user.email : null,
+        submittedForUserId: submitAsOther ? selectedSubmitterUser || null : null,
+        assignedSpecialistId: submitAsOther ? selectedSpecialistUser || null : null,
 
         /* ===============================
          PROPERTY
       =============================== */
         category: formData.category,
         description: formData.description,
+        story: formData.story || '',
+        contactName: formData.contactName || '',
+        contactPhone: formData.contactPhone || '',
+        contactRelation: formData.contactRelation || '',
+        sourceLink: formData.sourceLink || '',
 
         streetAddress: formData.streetAddress,
         addressLine2: formData.addressLine2 || null,
@@ -1142,6 +1593,7 @@ const SubmitterView = () => {
         emd: numOrNull(formData.emd),
         downPayment: numOrNull(formData.downPayment),
         financialInfo: formData.financialInfo || '',
+        assignmentFee: numOrNull(formData.assignmentFee),
 
         /* ===============================
          HOA
@@ -1152,35 +1604,68 @@ const SubmitterView = () => {
           : null,
 
         /* ===============================
-         SUBJECT-TO
+         CREATIVE FINANCING — PRIMARY MORTGAGE
       =============================== */
-        subjLoanBalance: numOrNull(formData.subjLoanBalance),
-        subjInterestRate: numOrNull(formData.subjInterestRate),
-        subjLoanMaturity: formData.subjLoanMaturity || null,
-        subjMonthlyPrincipal: numOrNull(formData.subjMonthlyPrincipal),
-        subjMonthlyInterest: numOrNull(formData.subjMonthlyInterest),
-        subjMonthlyTaxesInsurance: numOrNull(
-          formData.subjMonthlyTaxesInsurance
-        ),
+        hasPrimaryMortgage: formData.hasPrimaryMortgage || null,
+        primaryLoanBalance: numOrNull(formData.primaryLoanBalance),
+        primaryInterestRate: numOrNull(formData.primaryInterestRate),
+        primaryMaturityDate: formData.primaryMaturityDate || null,
+        primaryPrincipalInterest: numOrNull(formData.primaryPrincipalInterest),
+        primaryTaxesInsurance: numOrNull(formData.primaryTaxesInsurance),
 
         /* ===============================
-         SELLER FINANCING
+         CREATIVE FINANCING — SECOND MORTGAGE
       =============================== */
-        sellerLoanAmount: numOrNull(formData.sellerLoanAmount),
-        sellerInterestRate: numOrNull(formData.sellerInterestRate),
-        sellerLoanMaturity: formData.sellerLoanMaturity || null,
-        sellerMonthlyPayment: numOrNull(formData.sellerMonthlyPayment),
-        totalMonthlyPayment: numOrNull(formData.totalMonthlyPayment),
+        hasSecondMortgage: formData.hasSecondMortgage || null,
+        secondLoanBalance: numOrNull(formData.secondLoanBalance),
+        secondInterestRate: numOrNull(formData.secondInterestRate),
+        secondMaturityDate: formData.secondMaturityDate || null,
+        secondPrincipalInterest: numOrNull(formData.secondPrincipalInterest),
+        secondTaxesInsurance: numOrNull(formData.secondTaxesInsurance),
+
+        /* ===============================
+         CREATIVE FINANCING — SELLER EQUITY
+      =============================== */
+        hasSellerEquity: formData.hasSellerEquity || null,
+        sellerEquityAmount: numOrNull(formData.sellerEquityAmount),
+        sellerEquityInterestRate: numOrNull(formData.sellerEquityInterestRate),
+        sellerEquityMaturityDate: formData.sellerEquityMaturityDate || null,
+        sellerEquityPrincipalInterest: numOrNull(
+          formData.sellerEquityPrincipalInterest
+        ),
+        sellerEquityBalloonYears: formData.sellerEquityBalloonYears || null,
+
+        /* ===============================
+         CREATIVE FINANCING — DEAL TERMS
+      =============================== */
+        dealTerms: formData.dealTerms || '',
+        totalStartingMonthlyPayment: numOrNull(formData.totalStartingMonthlyPayment),
 
         /* ===============================
          STR
       =============================== */
         strZoning: formData.strZoning,
+        isOperatingSTR: formData.isOperatingSTR || null,
         turnkeyFurnished: formData.turnkeyFurnished,
+        hasStrFinancials: formData.hasStrFinancials || null,
         strConfidence: formData.strConfidence,
 
         occupancyRate: numOrNull(formData.occupancyRate),
-        // averageNightlyRate: numOrNull(formData.averageNightlyRate),
+
+        /* ===============================
+         STR KEY METRICS
+      =============================== */
+        averageNightlyRate: numOrNull(formData.averageNightlyRate),
+        strAnnualRevenue: numOrNull(formData.strAnnualRevenue),
+        strMonthlyRevenue: numOrNull(formData.strMonthlyRevenue),
+        strMonthlyUtilities: numOrNull(formData.strMonthlyUtilities),
+        strNOI: numOrNull(formData.strNOI),
+        strCleaningFee: numOrNull(formData.strCleaningFee),
+        strAvgStay: numOrNull(formData.strAvgStay),
+        strManagementFee: numOrNull(formData.strManagementFee),
+        strBookingPlatform: formData.strBookingPlatform || null,
+        hasCurrentBookings: formData.hasCurrentBookings || null,
+        currentBookingsDescription: formData.currentBookingsDescription || '',
 
         vacationRentalMarkets: formData.vacationRentalMarkets || [],
         travelMotivations: formData.travelMotivations || [],
@@ -1204,10 +1689,12 @@ const SubmitterView = () => {
         /* ===============================
          MEDIA (URLs ONLY)
       =============================== */
+        coverPhoto,
         interiorImages,
         exteriorImages,
         additionalImages,
         videos,
+        strFinancialDocs,
 
         /* ===============================
          FLAGS
@@ -1223,7 +1710,11 @@ const SubmitterView = () => {
 
       await createDealMutation.mutateAsync(dealData);
       localStorage.removeItem(LOCAL_STORAGE_KEY);
-      showNotification('success', 'Your property has been submitted successfully!', 'Property Submitted');
+      showNotification(
+        'success',
+        'Your listing will expire in 20 days. You will receive an email notification once the listing expires so you can renew it.',
+        'Property Submitted'
+      );
     } catch (err) {
       console.error('Submission failed:', err);
 
@@ -1264,6 +1755,10 @@ const SubmitterView = () => {
       setProofUploadModalOpen(false);
 
       // First upload all media
+      const coverPhoto = await uploadWithProgress(
+        'Cover Photo',
+        formData.coverPhoto
+      );
       const interiorImages = await uploadWithProgress(
         'Interior Photos',
         formData.interiorImages
@@ -1278,19 +1773,24 @@ const SubmitterView = () => {
       );
       const videos = await uploadWithProgress('Videos', formData.videos);
 
+      const strFinancialDocs = await uploadWithProgress(
+        'STR Financial Documents',
+        formData.strFinancialDocs
+      );
+
       const submitter = submitAsOther
         ? {
-            fullName: formData.submitterFullName,
-            email: formData.submitterEmail,
-            phone: formData.submitterPhone,
-            userType: formData.submitterUserType,
-          }
+          fullName: formData.submitterFullName,
+          email: formData.submitterEmail,
+          phone: formData.submitterPhone,
+          userType: formData.submitterUserType,
+        }
         : {
-            fullName: user?.name || '',
-            email: user?.email || '',
-            phone: user?.phone || '',
-            userType: user?.userType || '',
-          };
+          fullName: user?.name || '',
+          email: user?.email || '',
+          phone: user?.phone || '',
+          userType: user?.userType || '',
+        };
 
       // Build new property data
       const newPropertyData = {
@@ -1301,8 +1801,15 @@ const SubmitterView = () => {
         allowUnregisteredSeller: submitUnregisteredSeller || null,
         submittedByAdmin: submitAsOther,
         submittedByAdminEmail: submitAsOther ? user.email : null,
+        submittedForUserId: submitAsOther ? selectedSubmitterUser || null : null,
+        assignedSpecialistId: submitAsOther ? selectedSpecialistUser || null : null,
         category: formData.category,
         description: formData.description,
+        story: formData.story || '',
+        contactName: formData.contactName || '',
+        contactPhone: formData.contactPhone || '',
+        contactRelation: formData.contactRelation || '',
+        sourceLink: formData.sourceLink || '',
         streetAddress: formData.streetAddress,
         addressLine2: formData.addressLine2 || null,
         city: formData.city,
@@ -1319,27 +1826,50 @@ const SubmitterView = () => {
         emd: numOrNull(formData.emd),
         downPayment: numOrNull(formData.downPayment),
         financialInfo: formData.financialInfo || '',
+        assignmentFee: numOrNull(formData.assignmentFee),
         isHOA: !!formData.isHOA,
         hoaMonthlyFee: formData.isHOA
           ? numOrNull(formData.hoaMonthlyFee)
           : null,
-        subjLoanBalance: numOrNull(formData.subjLoanBalance),
-        subjInterestRate: numOrNull(formData.subjInterestRate),
-        subjLoanMaturity: formData.subjLoanMaturity || null,
-        subjMonthlyPrincipal: numOrNull(formData.subjMonthlyPrincipal),
-        subjMonthlyInterest: numOrNull(formData.subjMonthlyInterest),
-        subjMonthlyTaxesInsurance: numOrNull(
-          formData.subjMonthlyTaxesInsurance
+        hasPrimaryMortgage: formData.hasPrimaryMortgage || null,
+        primaryLoanBalance: numOrNull(formData.primaryLoanBalance),
+        primaryInterestRate: numOrNull(formData.primaryInterestRate),
+        primaryMaturityDate: formData.primaryMaturityDate || null,
+        primaryPrincipalInterest: numOrNull(formData.primaryPrincipalInterest),
+        primaryTaxesInsurance: numOrNull(formData.primaryTaxesInsurance),
+        hasSecondMortgage: formData.hasSecondMortgage || null,
+        secondLoanBalance: numOrNull(formData.secondLoanBalance),
+        secondInterestRate: numOrNull(formData.secondInterestRate),
+        secondMaturityDate: formData.secondMaturityDate || null,
+        secondPrincipalInterest: numOrNull(formData.secondPrincipalInterest),
+        secondTaxesInsurance: numOrNull(formData.secondTaxesInsurance),
+        hasSellerEquity: formData.hasSellerEquity || null,
+        sellerEquityAmount: numOrNull(formData.sellerEquityAmount),
+        sellerEquityInterestRate: numOrNull(formData.sellerEquityInterestRate),
+        sellerEquityMaturityDate: formData.sellerEquityMaturityDate || null,
+        sellerEquityPrincipalInterest: numOrNull(
+          formData.sellerEquityPrincipalInterest
         ),
-        sellerLoanAmount: numOrNull(formData.sellerLoanAmount),
-        sellerInterestRate: numOrNull(formData.sellerInterestRate),
-        sellerLoanMaturity: formData.sellerLoanMaturity || null,
-        sellerMonthlyPayment: numOrNull(formData.sellerMonthlyPayment),
-        totalMonthlyPayment: numOrNull(formData.totalMonthlyPayment),
+        sellerEquityBalloonYears: formData.sellerEquityBalloonYears || null,
+        dealTerms: formData.dealTerms || '',
+        totalStartingMonthlyPayment: numOrNull(formData.totalStartingMonthlyPayment),
         strZoning: formData.strZoning,
+        isOperatingSTR: formData.isOperatingSTR || null,
         turnkeyFurnished: formData.turnkeyFurnished,
+        hasStrFinancials: formData.hasStrFinancials || null,
         strConfidence: formData.strConfidence,
         occupancyRate: numOrNull(formData.occupancyRate),
+        averageNightlyRate: numOrNull(formData.averageNightlyRate),
+        strAnnualRevenue: numOrNull(formData.strAnnualRevenue),
+        strMonthlyRevenue: numOrNull(formData.strMonthlyRevenue),
+        strMonthlyUtilities: numOrNull(formData.strMonthlyUtilities),
+        strNOI: numOrNull(formData.strNOI),
+        strCleaningFee: numOrNull(formData.strCleaningFee),
+        strAvgStay: numOrNull(formData.strAvgStay),
+        strManagementFee: numOrNull(formData.strManagementFee),
+        strBookingPlatform: formData.strBookingPlatform || null,
+        hasCurrentBookings: formData.hasCurrentBookings || null,
+        currentBookingsDescription: formData.currentBookingsDescription || '',
         vacationRentalMarkets: formData.vacationRentalMarkets || [],
         travelMotivations: formData.travelMotivations || [],
         strListingLink: formData.strListingLink || '',
@@ -1351,10 +1881,12 @@ const SubmitterView = () => {
         localAttractions: formData.localAttractions || '',
         specialTags: formData.specialTags || [],
         autoTags: formData.autoTags || [],
+        coverPhoto,
         interiorImages,
         exteriorImages,
         additionalImages,
         videos,
+        strFinancialDocs,
         priorityFirstAccess: formData.priorityFirstAccess,
         fiftyFiftyPartner: formData.fiftyFiftyPartner,
         turnkey: deriveTurnkey(formData.turnkeyFurnished),
@@ -1387,8 +1919,8 @@ const SubmitterView = () => {
       showNotification(
         'error',
         err?.response?.data?.error ||
-          err?.message ||
-          'Failed to submit ownership claim. Please try again.',
+        err?.message ||
+        'Failed to submit ownership claim. Please try again.',
         'Claim Failed'
       );
     } finally {
@@ -1466,6 +1998,30 @@ const SubmitterView = () => {
     return [...existing, ...uploaded];
   };
 
+  const fetchUsers = async () => {
+    try {
+      const res = await getAdminUsers();
+      const allUsers = res.data;
+
+      const submitterUsers = allUsers.filter(
+        user => user.role === 'submitter' 
+      );
+      const specialistUsers = allUsers.filter(
+        user => user.role === 'acquisition_specialist'
+      );
+
+      setSubmitterUsers(submitterUsers);
+      setAcquisitionSpecialistUsers(specialistUsers);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+
   return (
     <div className="bg-app min-h-screen">
       {/* Upload Progress Bar Modal */}
@@ -1512,13 +2068,16 @@ const SubmitterView = () => {
                     type="checkbox"
                     className="h-5 w-5"
                     checked={submitAsOther}
-                    onChange={(e) => setSubmitAsOther(e.target.checked)}
+                    onChange={(e) => {
+                    setSubmitAsOther(e.target.checked);
+                    if (!e.target.checked) setAssignUserErrors({ submitterUser: '', specialistUser: '' });
+                  }}
                   />
                 </label>
               </div>
             )}
 
-            {currentStep === 1 && canSubmitOnBehalf && submitAsOther && (
+            {/* {currentStep === 1 && canSubmitOnBehalf && submitAsOther && (
               <div className="border border-border-subtle rounded-xl p-6 mb-8 bg-panel">
                 <div className="font-semibold text-text-primary mb-4">
                   Seller Information
@@ -1602,6 +2161,61 @@ const SubmitterView = () => {
                       </p>
                     </div>
                   </label>
+                </div>
+              </div>
+            )} */}
+
+            {/*Users Select box*/}
+            {currentStep === 1 && canSubmitOnBehalf && submitAsOther && (
+              <div className="mb-8 rounded-xl border border-border-subtle p-6 bg-panel">
+                <div className="font-semibold text-text-primary mb-4">Assign Users</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-1">
+                      Real Estate Professionals <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedSubmitterUser}
+                      onChange={(e) => {
+                        setSelectedSubmitterUser(e.target.value);
+                        if (e.target.value) setAssignUserErrors((prev) => ({ ...prev, submitterUser: '' }));
+                      }}
+                      className={`w-full border rounded-lg px-3 py-2 bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-teal-500 ${assignUserErrors.submitterUser ? 'border-red-500' : 'border-border-subtle'}`}
+                    >
+                      <option value="">Select a Real Estate Professional</option>
+                      {submitterUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name || u.email}
+                        </option>
+                      ))}
+                    </select>
+                    {assignUserErrors.submitterUser && (
+                      <p className="mt-1 text-sm text-red-500">{assignUserErrors.submitterUser}</p>
+                    )}
+                  </div>
+                  {/* <div>
+                    <label className="block text-sm font-medium text-text-primary mb-1">
+                      Acquisition Specialists <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedSpecialistUser}
+                      onChange={(e) => {
+                        setSelectedSpecialistUser(e.target.value);
+                        if (e.target.value) setAssignUserErrors((prev) => ({ ...prev, specialistUser: '' }));
+                      }}
+                      className={`w-full border rounded-lg px-3 py-2 bg-surface text-text-primary focus:outline-none focus:ring-2 focus:ring-teal-500 ${assignUserErrors.specialistUser ? 'border-red-500' : 'border-border-subtle'}`}
+                    >
+                      <option value="">Select an Acquisition Specialist</option>
+                      {specialistUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.name || u.email}
+                        </option>
+                      ))}
+                    </select>
+                    {assignUserErrors.specialistUser && (
+                      <p className="mt-1 text-sm text-red-500">{assignUserErrors.specialistUser}</p>
+                    )}
+                  </div> */}
                 </div>
               </div>
             )}
@@ -1708,7 +2322,7 @@ const SubmitterView = () => {
                 </Button>
               </div>
             ) : (
-             <div className="flex items-center justify-between pt-6 border-t border-border-subtle flex-wrap">
+              <div className="flex items-center justify-between pt-6 border-t border-border-subtle flex-wrap">
                 <Button
                   type="button"
                   variant="secondary"
@@ -1730,13 +2344,24 @@ const SubmitterView = () => {
 
                 <div className="flex items-center gap-3 mt-4 md:mt-0 form_btn_width">
                   {/* Save Draft is available on every step (1-6) */}
-                  <Button
+                  <Button className="bg-white text-teal-700 border border-teal-300 hover:bg-teal-50"
                     type="button"
                     variant="outline"
                     onClick={handleSave}
                     disabled={isSaving || isSubmitting}
                   >
                     {isSaving ? 'Saving...' : 'Save Draft'}
+                  </Button>
+
+                  {/* Reset wipes the localStorage prefill and empties every
+                      step. Confirmation modal prevents accidental clicks. */}
+                  <Button className="bg-white text-red-700 border border-red-300 hover:bg-red-50"
+                    type="button"
+                    variant="outline"
+                    onClick={() => setConfirmReset(true)}
+                    disabled={isSaving || isSubmitting}
+                  >
+                    Reset
                   </Button>
 
                   {currentStep >= 5 ? (
@@ -1814,6 +2439,7 @@ const SubmitterView = () => {
                       // Reset draft-edit tracking. Cancel only clears the form;
                       // the saved draft remains in My Drafts for later resume.
                       setCurrentDraftId(null);
+                      setResumedDraftId(null);
                     }}
                     className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
                   >
@@ -1822,29 +2448,57 @@ const SubmitterView = () => {
                 </div>
               </div>
             </Modal>
+
+            {/* Reset Confirmation Modal — prevents accidental wipe of the
+                prefilled localStorage data and all step inputs. */}
+            <Modal
+              isOpen={confirmReset}
+              onClose={() => setConfirmReset(false)}
+              title="Reset Form"
+              size="sm"
+            >
+              <div className="space-y-4">
+                <p className="text-text-secondary">
+                  Are you sure you want to reset the form?
+                </p>
+
+                <div className="bg-yellow-50 p-3 rounded text-sm text-yellow-800">
+                  This will clear every field across all steps and remove the
+                  locally saved progress. This action cannot be undone.
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <button
+                    onClick={() => setConfirmReset(false)}
+                    className="px-4 py-2 rounded border border-border-subtle text-text-primary hover:bg-app"
+                  >
+                    Keep My Data
+                  </button>
+
+                  <button
+                    onClick={handleResetForm}
+                    className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Yes, Reset Form
+                  </button>
+                </div>
+              </div>
+            </Modal>
           </form>
 
-          {/* My Drafts — always displayed */}
-          <div className="bg-surface border border-border-subtle rounded-xl shadow-sm p-8 mb-6">
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-              <h2 className="text-2xl font-semibold text-primary">
-                My Drafts
-              </h2>
-              {myDrafts && myDrafts.length > 0 && (
+          {/* My Drafts */}
+          {!loadingDrafts && myDrafts && myDrafts.length > 0 && (
+            <div className="bg-surface border border-border-subtle rounded-xl shadow-sm p-8 mb-6">
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+                <h2 className="text-2xl font-semibold text-primary">
+                  My Drafts
+                </h2>
                 <span className="text-sm text-text-secondary">
                   {myDrafts.length} draft
                   {myDrafts.length !== 1 ? 's' : ''}
                 </span>
-              )}
-            </div>
+              </div>
 
-            {loadingDrafts ? (
-              <Loader />
-            ) : !myDrafts || myDrafts.length === 0 ? (
-              <p className="text-text-secondary text-center py-8">
-                No drafts yet. Save a draft to resume it later.
-              </p>
-            ) : (
               <div className="space-y-3">
                 {[...myDrafts]
                   .sort((a, b) => {
@@ -1862,11 +2516,10 @@ const SubmitterView = () => {
                     return (
                       <div
                         key={draft.id}
-                        className={`border rounded-lg p-4 flex items-center justify-between gap-4 flex-wrap ${
-                          isCurrentlyEditing
-                            ? 'border-blue-400 bg-blue-50'
-                            : 'border-border-subtle bg-surface hover:bg-app'
-                        }`}
+                        className={`border rounded-lg p-4 flex items-center justify-between gap-4 flex-wrap ${isCurrentlyEditing
+                          ? 'border-blue-400 bg-blue-50'
+                          : 'border-border-subtle bg-surface hover:bg-app'
+                          }`}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -1894,15 +2547,21 @@ const SubmitterView = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                     
-                            <Button
-                              type="button"
-                              variant="primary"
-                              onClick={() => handleResumeDraft(draft)}
-                            >
-                              Resume
-                            </Button>
-                         
+
+                          <Button
+                            type="button"
+                            variant="primary"
+                            onClick={() => handleResumeDraft(draft)}
+                            disabled={draft.id === resumedDraftId}
+                            title={
+                              draft.id === resumedDraftId
+                                ? 'Already resumed — save your draft to resume again'
+                                : undefined
+                            }
+                          >
+                            Resume
+                          </Button>
+
                           <Button
                             type="button"
                             variant="secondary"
@@ -1915,199 +2574,49 @@ const SubmitterView = () => {
                     );
                   })}
               </div>
-            )}
 
-            {/* Delete Draft Confirmation Modal */}
-            <Modal
-              isOpen={!!confirmDeleteDraft}
-              onClose={() => setConfirmDeleteDraft(null)}
-              title="Delete Draft"
-              size="sm"
-            >
-              {confirmDeleteDraft && (
-                <div className="space-y-4">
-                  <p className="text-text-secondary">
-                    Are you sure you want to delete this draft? This action
-                    cannot be undone.
-                  </p>
-                  <div className="bg-app border border-border-subtle p-3 rounded text-sm text-text-secondary">
-                    <strong>
-                      {confirmDeleteDraft.title ||
-                        confirmDeleteDraft.streetAddress ||
-                        'Untitled draft'}
-                    </strong>
-                  </div>
-                  <div className="flex justify-end gap-2 pt-4">
-                    <button
-                      onClick={() => setConfirmDeleteDraft(null)}
-                      className="px-4 py-2 rounded border border-border-subtle text-text-primary hover:bg-app"
-                    >
-                      Keep Draft
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleDeleteDraft(confirmDeleteDraft.id)
-                      }
-                      className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-                    >
-                      Delete Draft
-                    </button>
-                  </div>
-                </div>
-              )}
-            </Modal>
-          </div>
-
-          {/* Previous Submissions */}
-          <div className="bg-surface border border-border-subtle rounded-xl shadow-sm p-8">
-            <h2 className="text-2xl font-semibold text-primary mb-6">
-              My Previous Submissions
-            </h2>
-
-            {/* Search Bar */}
-            <div className="mb-6">
-              <Input
-                placeholder="Search your submissions..."
-                value={submissionSearch}
-                onChange={(e) => setSubmissionSearch(e.target.value)}
-              />
-            </div>
-
-            {loadingDeals ? (
-              <Loader />
-            ) : myDeals && myDeals.length > 0 ? (
-              <div className="space-y-3">
-                {[...myDeals]
-                  .filter((deal) => deal.status !== 'draft')
-                  .filter(
-                    (deal) =>
-                      deal.title
-                        .toLowerCase()
-                        .includes(submissionSearch.toLowerCase()) ||
-                      deal.status
-                        .toLowerCase()
-                        .includes(submissionSearch.toLowerCase())
-                  )
-                  .sort((a, b) => {
-                    const dateA = new Date(a.submittedAt);
-                    const dateB = new Date(b.submittedAt);
-                    const validA = !isNaN(dateA.getTime());
-                    const validB = !isNaN(dateB.getTime());
-                    if (validA && validB) return dateB - dateA;
-                    if (validA) return -1;
-                    if (validB) return 1;
-                    return 0;
-                  })
-                  .map((deal) => (
-                    <details
-                      key={deal.id}
-                      className="border border-border-subtle rounded-lg overflow-hidden"
-                    >
-                      <summary className="p-4 flex items-center justify-between cursor-pointer hover:bg-app bg-surface">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-text-primary">
-                            {deal.title}
-                          </h3>
-                          <p className="text-sm text-text-secondary">
-                            Status:{' '}
-                            <span
-                              className={`font-medium ${
-                                deal.status === 'approved'
-                                  ? 'text-green-600'
-                                  : deal.status === 'published'
-                                    ? 'text-blue-600'
-                                    : deal.status === 'rejected'
-                                      ? 'text-red-600'
-                                      : 'text-yellow-600'
-                              }`}
-                            >
-                              {deal.status}
-                            </span>
-                            {deal.status === 'rejected' &&
-                              deal.rejectionReason && (
-                                <span className="ml-2 text-xs text-red-600 italic">
-                                  (Click to see reason)
-                                </span>
-                              )}
-                          </p>
-                          <p className="text-xs text-text-secondary">
-                            Submitted:{' '}
-                            {new Date(deal.submittedAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-text-primary">
-                            ${parseInt(deal.price).toLocaleString('en-US')}
-                          </p>
-                          {deal.status === 'pending' && (
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setConfirmUnsubmit(deal);
-                              }}
-                            >
-                              Unsubmit
-                            </Button>
-                          )}
-                        </div>
-                      </summary>
-                      {deal.status === 'rejected' && deal.rejectionReason && (
-                        <div className="px-4 pb-4 bg-app border-t border-border-subtle">
-                          <p className="text-sm font-medium text-text-primary mb-1">
-                            Rejection Reason:
-                          </p>
-                          <p className="text-sm text-text-secondary">
-                            {deal.rejectionReason}
-                          </p>
-                        </div>
-                      )}
-                    </details>
-                  ))}
-                <Modal
-                  isOpen={!!confirmUnsubmit}
-                  onClose={() => setConfirmUnsubmit(null)}
-                  title="Unsubmit Property"
-                  size="sm"
-                >
-                  {confirmUnsubmit && (
-                    <div className="space-y-4">
-                      <p className="text-text-secondary">
-                        Are you sure you want to unsubmit this property?
-                      </p>
-
-                      <div className="bg-app border border-border-subtle p-3 rounded text-sm text-text-secondary">
-                        This will remove the property from review and allow you
-                        to edit and resubmit it later.
-                      </div>
-
-                      <div className="flex justify-end gap-2 pt-4">
-                        <button
-                          onClick={() => setConfirmUnsubmit(null)}
-                          className="px-4 py-2 rounded border border-border-subtle text-text-primary hover:bg-app"
-                        >
-                          Keep Submitted
-                        </button>
-
-                        <button
-                          onClick={() => handleUnsubmit(confirmUnsubmit.id)}
-                          className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-                        >
-                          Unsubmit Property
-                        </button>
-                      </div>
+              {/* Delete Draft Confirmation Modal */}
+              <Modal
+                isOpen={!!confirmDeleteDraft}
+                onClose={() => setConfirmDeleteDraft(null)}
+                title="Delete Draft"
+                size="sm"
+              >
+                {confirmDeleteDraft && (
+                  <div className="space-y-4">
+                    <p className="text-text-secondary">
+                      Are you sure you want to delete this draft? This action
+                      cannot be undone.
+                    </p>
+                    <div className="bg-app border border-border-subtle p-3 rounded text-sm text-text-secondary">
+                      <strong>
+                        {confirmDeleteDraft.title ||
+                          confirmDeleteDraft.streetAddress ||
+                          'Untitled draft'}
+                      </strong>
                     </div>
-                  )}
-                </Modal>
-              </div>
-            ) : (
-              <p className="text-text-secondary text-center py-8">
-                No previous submissions yet. Submit your first property above!
-              </p>
-            )}
-          </div>
+                    <div className="flex justify-end gap-2 pt-4">
+                      <button
+                        onClick={() => setConfirmDeleteDraft(null)}
+                        className="px-4 py-2 rounded border border-border-subtle text-text-primary hover:bg-app"
+                      >
+                        Keep Draft
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDeleteDraft(confirmDeleteDraft.id)
+                        }
+                        className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                      >
+                        Delete Draft
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Modal>
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -2140,6 +2649,7 @@ const SubmitterView = () => {
         type={notification.type}
         title={notification.title}
         message={notification.message}
+        closeOnBackdrop={notification.closeOnBackdrop}
       />
     </div>
   );

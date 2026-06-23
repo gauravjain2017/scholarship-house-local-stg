@@ -35,7 +35,7 @@ const validateCurrency = (value, field, max = 1_000_000_000) => {
   }
 };
 
-  const validateTextLength = (value, field, maxLen = 2000) => {
+  const validateTextLength = (value, field, maxLen = 2000000) => {
     if (!isPresent(value)) return;
     if (String(value).length > maxLen) {
       errors[field] = `Must be under ${maxLen} characters`;
@@ -102,11 +102,18 @@ const validateCurrency = (value, field, max = 1_000_000_000) => {
       errors.financingType = 'Financing type is required';
     }
 
+    if (!formData.isOperatingSTR) {
+      errors.isOperatingSTR =
+        'Please indicate if the property is currently operating as an STR';
+    }
+
     if (!formData.strConfidence) {
       errors.strConfidence = 'STR Data Confidence is required';
     }
 
-    if (!formData.turnkeyFurnished) {
+    // Turnkey/Furnished is only relevant when the property is currently
+    // operating as an STR (matches the submitter form's conditional logic).
+    if (formData.isOperatingSTR === 'yes' && !formData.turnkeyFurnished) {
       errors.turnkeyFurnished = 'Turnkey Furnished is required';
     }
 

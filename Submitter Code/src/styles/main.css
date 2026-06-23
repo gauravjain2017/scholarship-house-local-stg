@@ -223,6 +223,159 @@ text-transform: capitalize !important;
 */
 
 
+.welcome-box {
+    background: linear-gradient(135deg, rgb(24 102 161) 0%, rgb(30 120 188) 100%);
+    padding: 60px 60px !important;
+    color: #fff;
+}
+.workspace {
+    padding-bottom: 0px !important;
+}
+.welcome-box p{
+	font-size:20px !important;
+	line-height:1.5em !important;
+}
+
+.welcome-box h1{
+	font-size:45px !important;
+	font-family: "DM Serif Display", Georgia, serif;
+}
+
+.welcome-box {
+    display: flex;
+	align-items:center;
+	
+}
+.month-box{
+	width:370px !important;
+}
+.sub-box-1 {
+    padding-right: 80px;
+}
+.platform-box h2 {
+    font-size: 30px;
+	font-family: "DM Serif Display", Georgia, serif;
+}
+.platform-box p {
+    font-size: 18px !important;
+}
+.platform-box  {
+    background-color:#EEF2F6!important;
+	margin-top: 60px !important;
+	
+}
+.platform-box p {
+    font-size: 18px !important;
+    max-width: 60%;
+}
+
+.work-box-h {
+    font-size: 18px;
+}
+
+.work-box svg {
+    background: #1E7AC0 !important;
+    color: #fff !important;
+    padding: 11px !important;
+    width: 45px !important;
+    height: 45px !important;
+    border-radius: 8px !important;
+}
+.workspace-h {
+    font-size: 30px;
+}
+.workspace-p {
+    font-size: 18px !important;
+    padding-bottom: 30px;
+}
+
+.investment-box {
+    padding: 25px 10px 60px !important;
+}
+.opp-box span {
+    background: #E5EDF4 !important;
+    color: #1E7AC0 !important;
+    margin-bottom: 10px;
+}
+
+.investment-box h2 {
+    font-size: 30px;
+	font-family: "DM Serif Display", Georgia, serif;
+}
+.workspace-card h2 {
+    font-size: 18px !important;
+    font-weight: bold;
+	color:#fff!important;
+}
+.workspace-card p {
+    font-size: 18px !important;
+	color:#fff!important;
+}
+.workspace-h {
+    font-size: 30px !important;
+	color: #072B53 !important;
+	font-family: "DM Serif Display", Georgia, serif;
+
+}
+.workspace-p {
+    font-size: 18px !important;
+    padding-bottom: 30px;
+
+}
+
+.workspace .p-6 {
+    background: linear-gradient(135deg, rgb(30 122 192) 0%, rgb(30 115 181) 100%);
+}
+
+.copy-footer {
+    background: #1E2A3B !important;
+    display: flex !important;
+    justify-content: center !important;
+}
+
+.copy-footer> div {
+    color: #fff !important;
+	font-size:16px !important;
+	
+}
+
+.cta-sec {
+    background: linear-gradient(135deg, rgb(23, 82, 181) 0%, rgb(30, 42, 59) 100%);
+    padding: 60px 60px !important;
+    color: #fff;
+}
+.cta-sec h2 {
+    font-size: 50px;
+    font-family: "DM Serif Display", Georgia, serif;
+    color: #fff;
+    text-align: center;
+}
+.cta-sec p {
+    font-size: 18px !important;
+    text-align: center;
+    padding-top: 20px;
+}
+.cta-sec a {
+    text-align: center;
+    display: block;
+    background: #1E7AC0 !important;
+    max-width: max-content;
+    padding: 14px 30px;
+    margin-inline: auto;
+    margin-top: 20px;
+    border-radius: 8px !important;
+    font-size: 18px;
+}
+
+.test_scroll {
+	top: 0;
+    position: fixed;
+    background: #fff !important;
+    border-bottom: 2px solid #1E7AC0 !important;
+    z-index: 40 !important;
+}
+
+
 @media screen and (max-width: 390px) {
 
 .rate {
@@ -385,4 +538,71 @@ text-transform: capitalize !important;
     padding-left: 13px !important;
     padding-right: 13px !important;
 }
+
+.welcome-box {
+    flex-wrap: wrap !important;
+	justify-content: center !important;
+	padding: 40px 15px !important;
+}
+
+.month-box {
+    width: 320px !important;
+    margin-top: 30px !important;
+}
+
+.welcome-box h1 {
+    font-size: 30px !important;
+    text-align: center;
+    line-height: 1.3em;
+}
+.sub-box-1 {
+    padding-right: 0;
+}
+.welcome-box p {
+    font-size: 18px !important;
+	text-align:center;
+	
+}
+
+.btns-col a {
+    display: flex;
+    margin: auto;
+    align-items: center;
+    padding: 12px 17px;
+}
+
+.platform-box p {
+    font-size: 18px !important;
+    max-width: 100% !important;
+}
+
+.workspace-card{
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+}
+.investment-box {
+    padding: 20px 5px 25px !important;
+}
+.padding-m {
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+    padding-top: 30px !important;
+}
+
+.cta-sec {
+    padding: 30px 20px !important;
+}
+.cta-sec h2 {
+    font-size: 29px;
+    line-height: 40px;
+}
+.cta-sec p {
+    padding-top: 5px;
+}
+.btns-col {
+    flex-wrap: wrap;
+}
+.workspace .p-6 {
+    padding: 20px !important;
+}
+
 }

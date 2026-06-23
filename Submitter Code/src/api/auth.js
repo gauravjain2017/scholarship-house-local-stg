@@ -10,6 +10,7 @@ export const submitRegistrationRequest = async ({
   phone,
   password,
   userType,
+  acquisitionSpecialist,
 }) => {
   const { data } = await apiClient.post('/auth/register-request', {
     email,
@@ -18,6 +19,7 @@ export const submitRegistrationRequest = async ({
     phone,
     password,
     userType,
+    acquisitionSpecialist,
   });
 
   return data;
@@ -30,6 +32,7 @@ export const submitterRegister = async ({
   name,
   email,
   phone,
+  acquisitionSpecialist,
   password,
   role,
   userType,
@@ -38,6 +41,7 @@ export const submitterRegister = async ({
     Name: name,
     Email: email,
     Phone: phone,
+    acquisitionSpecialist: acquisitionSpecialist,
     Password: password,
     Role: role,
     UserType: userType,
@@ -109,6 +113,13 @@ export const authAPI = {
   rejectRegistration: async (email) => {
     const { data } = await apiClient.post('/admin/reject-registration', {
       email,
+    });
+    return data;
+  },
+
+  getPublicRoles: async (portalType = 'submitter') => {
+    const { data } = await apiClient.get('/auth/public-roles', {
+      params: { portal_type: portalType },
     });
     return data;
   },

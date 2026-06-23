@@ -35,6 +35,21 @@ const ZONING_LABELS = {
   UNSURE: 'Not Sure',
 };
 
+const FINANCING_LABELS = {
+  traditional: 'Traditional Financing',
+  creative: 'Creative Financing',
+};
+
+const BOOKING_PLATFORM_LABELS = {
+  AIRBNB: 'Airbnb',
+  VRBO: 'VRBO',
+  BOTH: 'Both Airbnb & VRBO',
+  DIRECT: 'Direct Booking',
+  OTHER: 'Other',
+};
+
+const yesNoLabel = (v) => (v === 'yes' ? 'Yes' : v === 'no' ? 'No' : null);
+
 const ReviewField = ({ label, value }) => {
   if (!value && value !== 0) return null;
   return (
@@ -125,7 +140,14 @@ const ReviewSection = ({ formData, onEditStep }) => {
           <ReviewField label="Bathrooms" value={formData.bathrooms} />
           <ReviewField label="Year Built" value={formData.yearBuilt} />
           <ReviewField label="Square Footage" value={formData.squareFootage ? Number(formData.squareFootage).toLocaleString() : null} />
+          <ReviewField label="HOA" value={formData.isHOA ? 'Yes' : 'No'} />
+          {formData.isHOA && <ReviewField label="HOA Monthly Fee" value={formatCurrency(formData.hoaMonthlyFee)} />}
           <ReviewField label="Description" value={formData.description} />
+          <ReviewField label="Seller's Intentions" value={formData.story} />
+          <ReviewField label="Contact Name" value={formData.contactName} />
+          <ReviewField label="Contact Phone" value={formData.contactPhone} />
+          <ReviewField label="Contact Relation" value={formData.contactRelation} />
+          <ReviewField label="Source Link" value={formData.sourceLink} />
         </div>
       </div>
 
@@ -145,41 +167,115 @@ const ReviewSection = ({ formData, onEditStep }) => {
       <div className="mb-6 bg-panel border border-border-subtle rounded-xl overflow-hidden">
         <SectionHeader step={3} title="Financial Information" />
         <div className="px-6 py-3">
-          <ReviewField label="Price" value={formatCurrency(formData.price)} />
-          <ReviewField label="Financing Type" value={formData.financingType} />
-          <ReviewField label="Expected Close" value={formData.expectedCloseDate} />
-          <ReviewField label="EMD" value={formatCurrency(formData.emd)} />
-          <ReviewField label="Down Payment" value={formatCurrency(formData.downPayment)} />
-          <ReviewField label="Additional Info" value={formData.financialInfo} />
-          <ReviewField label="HOA" value={formData.isHOA ? 'Yes' : 'No'} />
-          {formData.isHOA && <ReviewField label="HOA Monthly Fee" value={formatCurrency(formData.hoaMonthlyFee)} />}
+          <ReviewField label="Financing Type" value={FINANCING_LABELS[formData.financingType] || formData.financingType} />
+          <ReviewField label="Purchase Price" value={formatCurrency(formData.price)} />
+
+          {/* Traditional financing */}
+          {formData.financingType === 'traditional' && (
+            <ReviewField label="Additional Info" value={formData.financialInfo} />
+          )}
+
+          {/* Creative financing */}
+          {formData.financingType === 'creative' && (
+            <>
+              <ReviewField label="Expected Close of Escrow" value={formData.expectedCloseDate} />
+              <ReviewField label="Earnest Money Deposit (EMD)" value={formatCurrency(formData.emd)} />
+              <ReviewField label="Down Payment (Excluding closing costs)" value={formatCurrency(formData.downPayment)} />
+              <ReviewField label="Assignment Fee" value={formatCurrency(formData.assignmentFee)} />
+
+              <ReviewField label="Primary Mortgage?" value={yesNoLabel(formData.hasPrimaryMortgage)} />
+              {formData.hasPrimaryMortgage === 'yes' && (
+                <>
+                  <ReviewField label="Primary Loan Balance" value={formatCurrency(formData.primaryLoanBalance)} />
+                  <ReviewField label="Primary Interest Rate" value={formData.primaryInterestRate ? `${formData.primaryInterestRate}%` : null} />
+                  <ReviewField label="Primary Maturity Date" value={formData.primaryMaturityDate} />
+                  <ReviewField label="Primary Principal & Interest" value={formatCurrency(formData.primaryPrincipalInterest)} />
+                  <ReviewField label="Primary Taxes & Insurance" value={formatCurrency(formData.primaryTaxesInsurance)} />
+                </>
+              )}
+
+              <ReviewField label="Second Mortgage?" value={yesNoLabel(formData.hasSecondMortgage)} />
+              {formData.hasSecondMortgage === 'yes' && (
+                <>
+                  <ReviewField label="Second Loan Balance" value={formatCurrency(formData.secondLoanBalance)} />
+                  <ReviewField label="Second Interest Rate" value={formData.secondInterestRate ? `${formData.secondInterestRate}%` : null} />
+                  <ReviewField label="Second Maturity Date" value={formData.secondMaturityDate} />
+                  <ReviewField label="Second Principal & Interest" value={formatCurrency(formData.secondPrincipalInterest)} />
+                  <ReviewField label="Second Taxes & Insurance" value={formatCurrency(formData.secondTaxesInsurance)} />
+                </>
+              )}
+
+              <ReviewField label="Seller Equity?" value={yesNoLabel(formData.hasSellerEquity)} />
+              {formData.hasSellerEquity === 'yes' && (
+                <>
+                  <ReviewField label="Seller Loan Amount" value={formatCurrency(formData.sellerEquityAmount)} />
+                  <ReviewField label="Seller Interest Rate" value={formData.sellerEquityInterestRate ? `${formData.sellerEquityInterestRate}%` : null} />
+                  <ReviewField label="Seller Maturity Date" value={formData.sellerEquityMaturityDate} />
+                  <ReviewField label="Seller Principal & Interest" value={formatCurrency(formData.sellerEquityPrincipalInterest)} />
+                  <ReviewField label="Balloon Payment Due" value={formData.sellerEquityBalloonYears ? `${formData.sellerEquityBalloonYears} Year${Number(formData.sellerEquityBalloonYears) > 1 ? 's' : ''}` : null} />
+                </>
+              )}
+
+              <ReviewField label="Deal Terms" value={formData.dealTerms} />
+              <ReviewField label="Total Starting Monthly Payment" value={formatCurrency(formData.totalStartingMonthlyPayment)} />
+            </>
+          )}
         </div>
       </div>
 
       {/* Rental Data */}
       <div className="mb-6 bg-panel border border-border-subtle rounded-xl overflow-hidden">
-        <SectionHeader step={4} title="Rental Data" />
+        <SectionHeader step={4} title="Short-Term Rental Data" />
         <div className="px-6 py-3">
+          <ReviewField label="STR Zoning Approved" value={ZONING_LABELS[formData.strZoning]} />
+          <ReviewField label="Currently Operating as STR?" value={yesNoLabel(formData.isOperatingSTR)} />
+
+          {formData.isOperatingSTR === 'yes' && (
+            <>
+              <ReviewField label="Listing Link" value={formData.strListingLink} />
+              <ReviewField label="Turnkey/Furnished" value={TURNKEY_LABELS[formData.turnkeyFurnished]} />
+              <ReviewField label="Access to STR Financials?" value={yesNoLabel(formData.hasStrFinancials)} />
+
+              {formData.hasStrFinancials === 'yes' && (
+                <>
+                  {formData.strFinancialDocs?.length > 0 && (
+                    <ReviewField
+                      label="STR Financial Documents"
+                      value={`${formData.strFinancialDocs.length} file${formData.strFinancialDocs.length > 1 ? 's' : ''} uploaded`}
+                    />
+                  )}
+                  <ReviewField label="Data Sheets Link" value={formData.strDataSheetsLink} />
+                  <ReviewField label="Occupancy Rate" value={formData.occupancyRate ? `${formData.occupancyRate}%` : null} />
+                  <ReviewField label="Average Nightly Rate" value={formatCurrency(formData.averageNightlyRate)} />
+                  <ReviewField label="Annual Gross Revenue" value={formatCurrency(formData.strAnnualRevenue)} />
+                  <ReviewField label="Average Monthly Revenue" value={formatCurrency(formData.strMonthlyRevenue)} />
+                  <ReviewField label="Monthly Utilities" value={formatCurrency(formData.strMonthlyUtilities)} />
+                  <ReviewField label="Net Operating Income (NOI)" value={formatCurrency(formData.strNOI)} />
+                  <ReviewField label="Cleaning Fee per Stay" value={formatCurrency(formData.strCleaningFee)} />
+                  <ReviewField label="Average Length of Stay" value={formData.strAvgStay ? `${formData.strAvgStay} night${Number(formData.strAvgStay) > 1 ? 's' : ''}` : null} />
+                  <ReviewField label="Property Management Fee" value={formData.strManagementFee ? `${formData.strManagementFee}%` : null} />
+                  <ReviewField label="Primary Booking Platform" value={BOOKING_PLATFORM_LABELS[formData.strBookingPlatform] || formData.strBookingPlatform} />
+                </>
+              )}
+            </>
+          )}
+
+          <ReviewField label="Current Bookings?" value={yesNoLabel(formData.hasCurrentBookings)} />
+          {formData.hasCurrentBookings === 'yes' && (
+            <ReviewField label="Current Bookings Details" value={formData.currentBookingsDescription} />
+          )}
           <ReviewField label="Data Confidence" value={CONFIDENCE_LABELS[formData.strConfidence]} />
-          <ReviewField label="Turnkey/Furnished" value={TURNKEY_LABELS[formData.turnkeyFurnished]} />
-          <ReviewField label="STR Zoning" value={ZONING_LABELS[formData.strZoning]} />
-          <ReviewField label="Occupancy Rate" value={formData.occupancyRate ? `${formData.occupancyRate}%` : null} />
           {formData.vacationRentalMarkets?.length > 0 && (
             <ReviewField label="Vacation Markets" value={formData.vacationRentalMarkets.join(', ')} />
           )}
           {formData.travelMotivations?.length > 0 && (
             <ReviewField label="Travel Motivations" value={formData.travelMotivations.join(', ')} />
           )}
-          <ReviewField label="Listing Link" value={formData.strListingLink} />
-          <ReviewField label="Data Sheets Link" value={formData.strDataSheetsLink} />
           <ReviewField label="Guest Demand" value={formData.guestDemandInsights} />
           <ReviewField label="Value Add" value={formData.valueAddOpportunities} />
           <ReviewField label="Local Contacts" value={formData.localContacts} />
           <ReviewField label="Amenities" value={formData.amenities} />
           <ReviewField label="Attractions" value={formData.localAttractions} />
-          {formData.specialTags?.length > 0 && (
-            <ReviewField label="Special Tags" value={formData.specialTags.join(', ')} />
-          )}
         </div>
       </div>
 
@@ -187,6 +283,7 @@ const ReviewSection = ({ formData, onEditStep }) => {
       <div className="mb-6 bg-panel border border-border-subtle rounded-xl overflow-hidden">
         <SectionHeader step={5} title="Photos & Media" />
         <div className="px-6 py-3">
+          <ReviewImages label="Cover Photo" images={formData.coverPhoto} />
           <ReviewImages label="Interior Photos" images={formData.interiorImages} />
           <ReviewImages label="Exterior Photos" images={formData.exteriorImages} />
           <ReviewImages label="Additional Photos" images={formData.additionalImages} />

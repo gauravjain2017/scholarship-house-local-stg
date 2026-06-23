@@ -1,12 +1,31 @@
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { authAPI } from '../api/auth';
 import { formatPhoneDisplay, unformatPhone } from '../utils/format';
 import logoTitleDarkBlue from '../assets/icons/logo-scholarship-house/logo-title-dark-blue.png';
+import { getAdminUsers } from '../api/admin';
+
 
 const Register = () => {
   const { submitRegistrationRequest } = useAuth();
-
+	const [ allUsers , setUsers] = useState([]);
+const fetchUsers = async () => {
+      try {
+         const res = await getAdminUsers({userType :'acquisition_specialist'});
+		 setUsers(res.data);
+      } catch (err) {
+         console.error('Failed to fetch users:', err);
+      }
+    };
+	useEffect(() => {
+		fetchUsers();
+	},[]);
+	
+	console.log('allUsers : ',allUsers )
+	
+	
+	
   const [formData, setFormData] = useState({
     email: '',
     phone: '',
@@ -15,8 +34,10 @@ const Register = () => {
     firstName: '',
     lastName: '',
     userType: '',
+    acquisitionSpecialist: '',
   });
   const [error, setError] = useState('');
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -27,6 +48,18 @@ const Register = () => {
     });
     setError('');
   };
+
+  useEffect(() => {
+    authAPI.getPublicRoles('submitter')
+      .then((res) => {
+        const data = res.data || [];
+        setRoles(data);
+        if (data.length === 1) {
+          setFormData((prev) => ({ ...prev, userType: data[0].role_slug }));
+        }
+      })
+      .catch(() => setRoles([]));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -68,7 +101,8 @@ const Register = () => {
       password: formData.password,
       firstName: formData.firstName,
       lastName: formData.lastName,
-      userType: 'submitter',
+       userType: 'submitter',
+      acquisitionSpecialist: formData.acquisitionSpecialist,
     });
 
     if (result.success) {
@@ -204,6 +238,34 @@ const Register = () => {
                     }))
                   }
                 />
+              </div>
+             
+
+		
+
+              <div>
+                <label
+                  htmlFor="acquisitionSpecialist"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Acquisition Specialist
+                </label>
+                <select
+                  id="acquisitionSpecialist"
+                  name="acquisitionSpecialist"
+                  className="mt-1 block w-full px-4 py-3 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#1E7AC0] focus:border-transparent transition bg-white"
+                  value={formData.acquisitionSpecialist || ''}
+                  onChange={handleChange}
+				  required
+                >
+                  <option value="">Select a specialist</option>
+                  <option value="No Acquistion">I don't have an Acquistion Specialist</option>
+                  {allUsers.map((user) => (
+                    <option key={user.email} value={user.email}>
+                      {user.firstName} {user.lastName}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
