@@ -12,7 +12,7 @@ export default defineConfig({
 
   server: {
     host: '0.0.0.0',
-    port: 4444,
+    port: 4020,
     strictPort: true,
     middlewareMode: false,
     proxy: {
