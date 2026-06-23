@@ -9,6 +9,7 @@ export const submitRegistrationRequest = async ({
   lastName,
   phone,
   password,
+  specialist,
   userType,
 }) => {
   const { data } = await apiClient.post('/auth/register-request', {
@@ -17,11 +18,14 @@ export const submitRegistrationRequest = async ({
     lastName,
     phone,
     password,
+    specialist,
     userType,
   });
 
   return data;
 };
+
+
 
 /**
  * Register a new submitter (DynamoDB)
@@ -112,6 +116,20 @@ export const authAPI = {
     });
     return data;
   },
+  getPublicRoles: async (portalType = 'client') => {
+    const { data } = await apiClient.get('/auth/public-roles', {
+      params: { portal_type: portalType },
+    });
+    return data;
+  },
+
+  // Get Team Members Listing
+
+  getTeamMembers: async () => {
+    const { data } = await apiClient.get('/auth/team-members');
+    return data;
+  },
+
 
   /**
    * Get current user profile

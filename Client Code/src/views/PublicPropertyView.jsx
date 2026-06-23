@@ -15,6 +15,8 @@ const PublicPropertyView = () => {
   });
 
   // After
+
+  console.log('PublicPropertyView - deal data:', deal);
 const ALLOWED_STATUSES = ['published', 'sold', 'pending'];
 if (!ALLOWED_STATUSES.includes(deal?.status)) {
   propertyVisible = false;

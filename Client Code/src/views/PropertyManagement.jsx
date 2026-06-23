@@ -1201,7 +1201,7 @@ const PropertyManagement = () => {
               <label className="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" checked={!!editingDeal.fiftyFiftyPartner} onChange={(e) => setEditingDeal((prev) => ({ ...prev, fiftyFiftyPartner: e.target.checked }))} className="mt-1 w-5 h-5 accent-accent" />
                 <div>
-                  <div className="text-base font-semibold text-text-primary">50-50 Partnership Opportunity</div>
+                  <div className="text-base font-semibold text-text-primary">50-50 Partnership Pro Forma</div>
                   <div className="text-sm text-text-secondary mt-0.5">Mark this property as a potential 50-50 partnership.</div>
 
 

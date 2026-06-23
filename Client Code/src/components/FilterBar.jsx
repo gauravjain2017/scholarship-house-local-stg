@@ -37,7 +37,7 @@ const AccordionSection = ({ title, icon, open, onToggle, children }) => {
         onClick={onToggle}
         className="w-full flex items-center justify-between px-3 py-2 bg-gray-100 rounded-xl hover:bg-gray-100 transition-colors"
       >
-        <span className="flex items-center gap-2 text-xs font-bold text-gray-800 uppercase tracking-wide whitespace-nowrap">
+        <span className="flex items-center gap-1 text-xs font-bold text-gray-800 uppercase tracking-wide whitespace-nowrap">
           {icon && <span className="text-base shrink-0">{icon}</span>}
           {title}
         </span>
@@ -48,7 +48,7 @@ const AccordionSection = ({ title, icon, open, onToggle, children }) => {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && <div className="px-4 pb-5 pt-4">{children}</div>}
+      {open && <div className="px-1 pb-5 pt-4">{children}</div>}
     </div>
   );
 };
@@ -57,11 +57,30 @@ const AccordionSection = ({ title, icon, open, onToggle, children }) => {
 const RangeSlider = ({ label, min, max, step = 1, valueMin, valueMax, onChange, format = (v) => v, debounceMs = 500 }) => {
   const [localMin, setLocalMin] = useState(valueMin);
   const [localMax, setLocalMax] = useState(valueMax);
+  const [inputMin, setInputMin] = useState(String(format(valueMin)));
+  const [inputMax, setInputMax] = useState(String(format(valueMax)));
   const timerRef = useRef(null);
+  const minFocusRef = useRef(false);
+  const maxFocusRef = useRef(false);
 
-  // Sync local state when parent value changes (e.g. filter reset)
-  useEffect(() => { setLocalMin(valueMin); }, [valueMin]);
-  useEffect(() => { setLocalMax(valueMax); }, [valueMax]);
+  // Strip formatting chars ($, commas, %, spaces) and parse to a number.
+  const parseInput = (raw) => {
+    if (raw === null || raw === undefined) return NaN;
+    const cleaned = String(raw).replace(/[^\d.-]/g, '');
+    if (!cleaned || cleaned === '-' || cleaned === '.') return NaN;
+    return Number(cleaned);
+  };
+
+  // Sync local state when parent value changes (e.g. filter reset). Don't
+  // overwrite the input text while the user is editing that field.
+  useEffect(() => {
+    setLocalMin(valueMin);
+    if (!minFocusRef.current) setInputMin(String(format(valueMin)));
+  }, [valueMin]);
+  useEffect(() => {
+    setLocalMax(valueMax);
+    if (!maxFocusRef.current) setInputMax(String(format(valueMax)));
+  }, [valueMax]);
 
   const debouncedOnChange = useCallback(
     (newMin, newMax) => {
@@ -78,6 +97,67 @@ const RangeSlider = ({ label, min, max, step = 1, valueMin, valueMax, onChange, 
 
   const pctMin = ((localMin - min) / (max - min)) * 100;
   const pctMax = ((localMax - min) / (max - min)) * 100;
+
+  // Live update as the user types: move the slider thumb immediately,
+  // keep the input text exactly as typed, defer the parent update via debounce.
+  const handleMinInput = (raw) => {
+    setInputMin(raw);
+    const num = parseInput(raw);
+    if (!Number.isFinite(num)) return;
+    let v = num;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    if (v > localMax) v = localMax;
+    setLocalMin(v);
+    debouncedOnChange(v, localMax);
+  };
+
+  const handleMaxInput = (raw) => {
+    setInputMax(raw);
+    const num = parseInput(raw);
+    if (!Number.isFinite(num)) return;
+    let v = num;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    if (v < localMin) v = localMin;
+    setLocalMax(v);
+    debouncedOnChange(localMin, v);
+  };
+
+  // Final clamp on blur / Enter — force the input text to the formatted clamped value.
+  const commitMin = (raw) => {
+    const num = parseInput(raw);
+    if (!Number.isFinite(num)) {
+      setLocalMin(min);
+      setInputMin(String(format(min)));
+      debouncedOnChange(min, localMax);
+      return;
+    }
+    let v = num;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    if (v > localMax) v = localMax;
+    setLocalMin(v);
+    setInputMin(String(format(v)));
+    debouncedOnChange(v, localMax);
+  };
+
+  const commitMax = (raw) => {
+    const num = parseInput(raw);
+    if (!Number.isFinite(num)) {
+      setLocalMax(max);
+      setInputMax(String(format(max)));
+      debouncedOnChange(localMin, max);
+      return;
+    }
+    let v = num;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    if (v < localMin) v = localMin;
+    setLocalMax(v);
+    setInputMax(String(format(v)));
+    debouncedOnChange(localMin, v);
+  };
 
   return (
     <div className="space-y-2">
@@ -109,6 +189,7 @@ const RangeSlider = ({ label, min, max, step = 1, valueMin, valueMax, onChange, 
             if (v - min < step) v = min;
             if (v <= localMax) {
               setLocalMin(v);
+              if (!minFocusRef.current) setInputMin(String(format(v)));
               debouncedOnChange(v, localMax);
             }
           }}
@@ -129,12 +210,42 @@ const RangeSlider = ({ label, min, max, step = 1, valueMin, valueMax, onChange, 
             if (v - min < step) v = min;
             if (v >= localMin) {
               setLocalMax(v);
+              if (!maxFocusRef.current) setInputMax(String(format(v)));
               debouncedOnChange(localMin, v);
             }
           }}
           className="absolute inset-x-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-blue-500 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-blue-500 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:shadow [&::-moz-range-thumb]:cursor-pointer"
           style={{ zIndex: pctMax > 50 ? 3 : 5 }}
         />
+      </div>
+      {/* Min / Max number inputs (synced with slider thumbs) */}
+      <div className="flex items-center gap-2 pt-1">
+        <div className="flex-1">
+          <label className="block text-[11px] uppercase tracking-wide text-gray-400 mb-1">Min</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={inputMin}
+            onFocus={() => { minFocusRef.current = true; setInputMin(String(localMin)); }}
+            onChange={(e) => handleMinInput(e.target.value)}
+            onBlur={(e) => { minFocusRef.current = false; commitMin(e.target.value); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#0AAFE5] focus:border-[#1E7AC0]"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-[11px] uppercase tracking-wide text-gray-400 mb-1">Max</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={inputMax}
+            onFocus={() => { maxFocusRef.current = true; setInputMax(String(localMax)); }}
+            onChange={(e) => handleMaxInput(e.target.value)}
+            onBlur={(e) => { maxFocusRef.current = false; commitMax(e.target.value); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#0AAFE5] focus:border-[#1E7AC0]"
+          />
+        </div>
       </div>
     </div>
   );
@@ -507,8 +618,16 @@ export default function FilterBar({
       });
     }
 
+    // if (filters.fiftyFiftyPartner) {
+    //   active.push({ key: 'fiftyFiftyPartner', label: 'Flag', value: '50-50 Partnership' });
+    // }
+
     if (filters.fiftyFiftyPartner) {
-      active.push({ key: 'fiftyFiftyPartner', label: 'Flag', value: '50-50 Partnership' });
+      active.push({ key: 'fiftyFiftyPartner', label: 'Flag', value: '50-50 Partnership Available' });
+    }
+
+    if (filters.fiftyFiftyPreApproved) {
+      active.push({ key: 'fiftyFiftyPreApproved', label: 'Flag', value: '50-50 Partnership Pre-Approved' });
     }
 
     if (filters.submitterSearch) {
@@ -533,7 +652,7 @@ export default function FilterBar({
       active.push({
         key: 'selectedStatuses',
         label: 'Status',
-        value: filters.selectedStatuses.length === 3 ? 'All' : filters.selectedStatuses.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', '),
+        value: filters.selectedStatuses.length === 4 ? 'All' : filters.selectedStatuses.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(', '),
       });
     }
 
@@ -705,9 +824,10 @@ export default function FilterBar({
       turnkey: false,
       turnkeyFurnished: '',
       priorityFirstAccess: false,
+      fiftyFiftyPreApproved: false,
       submitterSearch: '',
       selectedStates: [],
-      selectedStatuses: ['published', 'sold','pending'],
+      selectedStatuses: ['published', 'approved', 'sold','pending'],
       vacationRentalMarkets: [],
       travelMotivations: [],
       selectedTags: [],
@@ -760,6 +880,7 @@ export default function FilterBar({
       turnkey: false,
       turnkeyFurnished: '',
       priorityFirstAccess: false,
+      fiftyFiftyPreApproved: false,
       fiftyFiftyPartner: false,
       doneForYou: false,
       occupancyRateMin: '',
@@ -781,7 +902,7 @@ export default function FilterBar({
       egrMin_upscale: '', egrMax_upscale: '',
       egrMin_luxury: '', egrMax_luxury: '',
       selectedStates: [],
-      selectedStatuses: ['published', 'sold','pending'],
+      selectedStatuses: ['published', 'approved', 'sold','pending'],
       vacationRentalMarkets: [],
       travelMotivations: [],
       selectedTags: [],
@@ -798,7 +919,7 @@ export default function FilterBar({
     <>
      
 
-      {/* 50-50 Partnership Filter */}
+      {/* 50-50 Partnership Filter
       {isFilterEnabled('fiftyFiftyPartner') && (
       <div className="px-4 py-3 border-b border-gray-100">
         <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600">
@@ -808,9 +929,39 @@ export default function FilterBar({
             onChange={(e) => { setFilters((p) => ({ ...p, fiftyFiftyPartner: e.target.checked })); setCurrentPage?.(1); }}
             className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          50-50 Partnership Opportunity
+          50-50 Partnership Pro Forma
         </label>
       </div>
+      )} */}
+
+      {/* 50-50 Partnership Pro Forma Section */}
+      {isSectionEnabled(['fiftyFiftyPartner', 'fiftyFiftyPreApproved']) && (
+      <AccordionSection title="50-50 Partnerships" icon={<span role="img" aria-label="handshake">&#x1F91D;</span>} open={openSection === 'fiftyFifty'} onToggle={() => toggleSection('fiftyFifty')}>
+        <div className="flex flex-col gap-1.5">
+          {isFilterEnabled('fiftyFiftyPartner') && (
+          <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600">
+            <input
+              type="checkbox"
+              checked={!!filters.fiftyFiftyPartner}
+              onChange={(e) => { setFilters((p) => ({ ...p, fiftyFiftyPartner: e.target.checked })); setCurrentPage?.(1); }}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            50-50 Partnership Available
+          </label>
+          )}
+          {isFilterEnabled('fiftyFiftyPreApproved') && (
+          <label className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600">
+            <input
+              type="checkbox"
+              checked={!!filters.fiftyFiftyPreApproved}
+              onChange={(e) => { setFilters((p) => ({ ...p, fiftyFiftyPreApproved: e.target.checked })); setCurrentPage?.(1); }}
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            50-50 Partnership Pre-Approved
+          </label>
+          )}
+        </div>
+      </AccordionSection>
       )}
 	  
 	  
@@ -818,27 +969,31 @@ export default function FilterBar({
       <AccordionSection title="Property Status" icon={<span role="img" aria-label="status">&#x1F3F7;</span>} open={openSection === 'status'} onToggle={() => toggleSection('status')}>
         <div className="flex flex-col gap-1.5">
           {[
-            { value: 'published', label: 'Active' },
-            { value: 'pending', label: 'Pending' },
-            { value: 'sold', label: 'Sold' },
-          ].map(({ value, label }) => (
-            <label key={value} className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600">
-              <input
-                type="checkbox"
-                checked={(filters.selectedStatuses || ['published', 'sold', 'pending']).includes(value)}
-                onChange={(e) => {
-                  const current = filters.selectedStatuses || ['published', 'sold', 'pending'];
-                  const updated = e.target.checked
-                    ? [...current, value]
-                    : current.filter((s) => s !== value);
-                  setFilters((p) => ({ ...p, selectedStatuses: updated }));
-                  setCurrentPage?.(1);
-                }}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              {label}
-            </label>
-          ))}
+            // "Active" covers both published and approved listings.
+            { key: 'active', label: 'Active', values: ['published', 'approved'] },
+            { key: 'pending', label: 'Pending', values: ['pending'] },
+            { key: 'sold', label: 'Sold', values: ['sold'] },
+          ].map(({ key, label, values }) => {
+            const current = filters.selectedStatuses || ['published', 'approved', 'sold', 'pending'];
+            const checked = values.every((v) => current.includes(v));
+            return (
+              <label key={key} className="flex items-center gap-2 text-sm cursor-pointer hover:text-blue-600">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const updated = e.target.checked
+                      ? [...new Set([...current, ...values])]
+                      : current.filter((s) => !values.includes(s));
+                    setFilters((p) => ({ ...p, selectedStatuses: updated }));
+                    setCurrentPage?.(1);
+                  }}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                {label}
+              </label>
+            );
+          })}
         </div>
       </AccordionSection>
 
@@ -1095,9 +1250,13 @@ export default function FilterBar({
           <RangeSlider
             label="Est. Occupancy"
             min={rc.min} max={rc.max} step={rc.step}
-            valueMin={filters.occupancyRateMin || rc.min}
-            valueMax={filters.occupancyRateMax || rc.max}
-            onChange={(newMin, newMax) => setFilters((p) => ({ ...p, occupancyRateMin: newMin, occupancyRateMax: newMax }))}
+            valueMin={Number(filters.occupancyRateMin) || rc.min}
+            valueMax={Number(filters.occupancyRateMax) || rc.max}
+            onChange={(newMin, newMax) => setFilters((p) => ({
+              ...p,
+              occupancyRateMin: newMin === rc.min ? '' : String(newMin),
+              occupancyRateMax: newMax === rc.max ? '' : String(newMax),
+            }))}
             format={(v) => `${v}%`}
           />); })()}
         </div>
@@ -1370,7 +1529,7 @@ export default function FilterBar({
           </svg>
           <input
             type="text"
-            placeholder="Search by title, Description ..."
+            placeholder="Search by title, Description, Property ID..."
             value={filters.search}
             onChange={(e) => {
               updateFilters((p) => ({ ...p, search: e.target.value }));

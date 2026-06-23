@@ -14,6 +14,7 @@
 import { useState } from 'react';
 import ImageCarousel from '../components/ImageCarousel';
 import Button from '../components/Button';
+import { useHasPermission } from '../utils/roles';
 
 // ─── Pure helpers (no external deps) ─────────────────────────────────────────
 
@@ -36,6 +37,7 @@ export const isTurnkeyDeal = (deal) =>
 
 export const getDealImages = (deal) =>
   [
+    ...(Array.isArray(deal?.coverPhoto) ? deal.coverPhoto : []),
     ...(Array.isArray(deal?.exteriorImages) ? deal.exteriorImages : []),
     ...(Array.isArray(deal?.interiorImages) ? deal.interiorImages : []),
     ...(Array.isArray(deal?.additionalImages) ? deal.additionalImages : []),
@@ -46,6 +48,38 @@ export const getDealImages = (deal) =>
       return null;
     })
     .filter((img) => typeof img === 'string' && img.trim().length > 0);
+
+// Card carousel shows only cover photo + exterior images (no interior or additional).
+// Falls back to a single cover image from other arrays if neither field has data.
+export const getCardImages = (deal) => {
+  const normalize = (img) => {
+    if (typeof img === 'string') return img;
+    if (img && typeof img === 'object' && img.url) return img.url;
+    return null;
+  };
+  const isValid = (img) => typeof img === 'string' && img.trim().length > 0;
+
+  const cover = (Array.isArray(deal?.coverPhoto) ? deal.coverPhoto : [])
+    .map(normalize)
+    .filter(isValid);
+
+  const exterior = (Array.isArray(deal?.exteriorImages) ? deal.exteriorImages : [])
+    .map(normalize)
+    .filter(isValid);
+
+  const combined = [...cover, ...exterior];
+  if (combined.length > 0) return combined;
+
+  // No cover/exterior — show just the first available image as a placeholder
+  const fallback = [
+    ...(Array.isArray(deal?.interiorImages) ? deal.interiorImages : []),
+    ...(Array.isArray(deal?.additionalImages) ? deal.additionalImages : []),
+  ]
+    .map(normalize)
+    .filter(isValid);
+
+  return fallback.length > 0 ? [fallback[0]] : [];
+};
 
 export const PROPERTY_TYPES = [
   { value: 'SINGLE_FAMILY', label: 'Single Family Home' },
@@ -159,6 +193,7 @@ const DealCard = ({
 
   const tags = [
     { key: 'jv',         show: deal.fiftyFiftyPartner === true,                                          label: '50/50 Joint Venture',    color: 'bg-violet-50 text-violet-700 ring-violet-200', icon: '🤝' },
+    { key: 'preapproved5050',show: deal.fiftyFiftyPreApproved === true, label: '50-50 Pre Approved',color: 'bg-indigo-50 text-indigo-700 ring-indigo-200', icon: '✅' },
     { key: 'turnkey',    show: isTurnkeyDeal(deal),                                                      label: 'Turnkey Fully Furnished', color: 'bg-emerald-50 text-emerald-700 ring-emerald-200', icon: '🏠' },
     { key: 'creative',   show: isCreativeFinancing,                                                      label: 'Creative Financing',      color: 'bg-amber-50 text-amber-700 ring-amber-200', icon: '💡' },
     { key: 'lowrate',    show: !isNaN(interestRate) && interestRate > 0 && interestRate < 5,             label: 'Low Interest Rate',       color: 'bg-sky-50 text-sky-700 ring-sky-200', icon: '📉' },
@@ -240,11 +275,7 @@ const DealCard = ({
         </button>
 
         <ImageCarousel
-          images={
-            Array.isArray(deal.exteriorImages) && deal.exteriorImages.length > 0
-              ? deal.exteriorImages
-              : getDealImages(deal)
-          }
+          images={getCardImages(deal)}
           alt={deal.title}
           className="w-full h-full"
           counterOnHover={null}
@@ -274,9 +305,11 @@ const DealCard = ({
         </h3>
 
         {/* Price */}
-        <p className="text-2xl font-bold text-primary leading-none">
-          ${formatPrice(deal.price)}
-        </p>
+      <p className="text-2xl font-bold text-primary leading-none">
+		${formatPrice(
+		Number(deal.price || 0) + (Number(deal.assignmentFee) > 0 ? Number(deal.assignmentFee) : 0)
+		)}
+		</p>
 
         {/* Property ID */}
         <p className="text-xs text-text-secondary">
@@ -326,7 +359,19 @@ const DealCard = ({
                 : '—'
             }
           />
-          <MetricPill label="Entry / Down" value={hasValue(deal.downPayment) ? fmt$(deal.downPayment) : '—'} />
+         
+		<MetricPill
+  label="Entry / Down"
+  value={(() => {
+    const down = Number(deal.downPayment || 0);
+    const fee = Number(deal.assignmentFee) > 0 ? Number(deal.assignmentFee) : 0;
+    const total = down + fee;
+
+    return total > 0 ? fmt$(total) : '—';
+  })()}
+/>
+		  
+		  
           <MetricPill
             label="PITI"
             value={hasValue(deal.totalMonthlyPayment) ? `${fmt$(deal.totalMonthlyPayment)}/mo` : '—'}
@@ -405,7 +450,7 @@ const DealCard = ({
         {/* Footer: Copy Link + View Details */}
    {/* Footer: Copy Link + View Details */}
         <div className="flex items-center justify-between mt-auto pt-1">
-          {deal.status?.toUpperCase() !== 'PENDING' ? (
+          {(useHasPermission('browse_property.copy_link')) ? (
             <button
               onClick={handleCopyLink}
               className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition px-2 py-1 rounded-md hover:bg-blue-50"

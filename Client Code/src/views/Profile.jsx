@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useHasPermission } from '../utils/roles';
 import { formatPhoneDisplay, unformatPhone } from '../utils/format';
 import { checkEmail, updateProfile, changePassword, getProfile } from '../api/profile';
+import "../styles/main.css";
 
 /* ====================================================================
  * Profile page — two tabs:
@@ -21,57 +23,199 @@ const TABS = [
 
 const Profile = () => {
   const { user, setUser, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('info');
+  const canUpdateProfile = useHasPermission('my_profile.can_update');
+  const canChangePassword = useHasPermission('my_profile.change_password');
+
+  const availableTabs = TABS.filter((tab) => {
+    if (tab.id === 'info') return canUpdateProfile;
+    if (tab.id === 'password') return canChangePassword;
+    return false;
+  });
+
+  const [activeTab, setActiveTab] = useState(
+    canUpdateProfile ? 'info' : canChangePassword ? 'password' : null
+  );
+
+  const noAccess = !canUpdateProfile && !canChangePassword;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F5FAFF] to-[#EAF4FF] py-10 px-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-[#072B53]">My Profile</h1>
-          <p className="text-gray-500 mt-1">
-            Manage your account information and password
-          </p>
-        </div>
+        <div
+  className="relative mb-6 overflow-hidden rounded-2xl profile-banner "
+  style={{
+    background:
+      "linear-gradient(135deg, #0d1f3c 0%, #1a3a5c 40%, #0f2744 70%, #0a1628 100%)",
+    boxShadow: "0 8px 32px rgba(10, 22, 40, 0.4)",
+  }}
+>
+  {/* Decorative Background */}
+  <div
+    className="absolute -top-10 -right-10 w-64 h-64 rounded-full"
+    style={{
+      background:
+        "radial-gradient(circle, rgba(45,156,219,0.15) 0%, transparent 70%)",
+    }}
+  />
 
-        {/* Card */}
-        <div className="bg-surface/95 backdrop-blur-sm border rounded-2xl shadow-xl overflow-hidden">
-          {/* Tab bar */}
-          <div className="flex border-b border-gray-200">
-            {TABS.map((tab) => {
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors relative ${
-                    active
-                      ? 'text-[#1E7AC0] bg-[#F5FAFF]'
-                      : 'text-gray-600 hover:text-[#1E7AC0] hover:bg-gray-50'
-                  }`}
-                  aria-selected={active}
-                  role="tab"
-                >
-                  {tab.label}
-                  {active && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#1E7AC0]" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+  <div
+    className="absolute -bottom-10 left-1/3 w-48 h-48 rounded-full"
+    style={{
+      background:
+        "radial-gradient(circle, rgba(77,166,255,0.08) 0%, transparent 70%)",
+    }}
+  />
 
-          {/* Tab panels */}
-          <div className="p-8">
-            {activeTab === 'info' && (
-              <ProfileInfoTab user={user} setUser={setUser} logout={logout} />
-            )}
-            {activeTab === 'password' && (
-              <ChangePasswordTab logout={logout} />
-            )}
+  <div className="relative z-10 flex items-start gap-7 svg-icon-main">
+    {/* Avatar */}
+    <div
+      className="flex items-center justify-center shrink-0 p-svg-icon mt-1"
+      style={{
+        width: "75px",
+        height: "75px",
+        borderRadius: "50%",
+        background: "linear-gradient(135deg, #1e6ec8, #2d9cdb)",
+        border: "2px solid rgba(255,255,255,0.15)",
+      }}
+    >
+      <svg
+  enable-background="new 0 0 32 32"
+  viewBox="0 0 32 32"
+  xmlns="http://www.w3.org/2000/svg"
+  width="34"
+  height="34"
+>
+  <g fill="#ffffff">
+    <path d="m25.067 17.573c-.439-.44-.894-.831-1.35-1.162-.447-.326-1.072-.226-1.396.22-.13.178-.174.384-.174.589 0 .309.125.613.394.808.371.271.745.593 1.111.959 2.042 2.042 3.167 4.76 3.167 7.652v.361c0 .552-.448 1-1 1h-19.639c-.551 0-1-.448-1-1v-.36c0-3.421 1.564-6.563 4.292-8.622.26-.196.381-.495.381-.798 0-.21-.048-.422-.185-.602-.333-.441-.959-.528-1.401-.196-3.232 2.439-5.087 6.163-5.087 10.218v.36c0 1.654 1.346 3 3 3h19.64c1.654 0 3-1.346 3-3v-.36c0-3.427-1.333-6.647-3.753-9.067z" />
+    <path d="m19.82 17.22c2.54-1.366 4.271-4.049 4.271-7.129 0-4.462-3.63-8.091-8.091-8.091s-8.091 3.629-8.091 8.091c0 3.081 1.731 5.763 4.271 7.129 2.244 1.27 5.395 1.27 7.64 0zm-3.82-13.22c3.358 0 6.091 2.732 6.091 6.091s-2.733 6.091-6.091 6.091-6.091-2.732-6.091-6.091 2.733-6.091 6.091-6.091z" />
+  </g>
+</svg>
+    </div>
+
+    {/* Content */}
+    <div>
+      <p
+        className="uppercase tracking-widest font-semibold mb-1"
+        style={{
+          fontSize: "11px",
+          color: "#4da6ff",
+        }}
+      >
+        Account Settings
+      </p>
+
+      <h1
+        className="font-bold mt-1"
+        style={{
+          fontSize: "32px",
+          color: "#ffffff",
+          lineHeight: "1.2",
+        }}
+      >
+        My Profile
+      </h1>
+
+      <p
+        className="mt-2"
+        style={{
+          color: "rgba(255,255,255)",
+          fontSize: "18px",
+        }}
+      >
+        Easily manage your account information, update personal details, change your password, and maintain the security of your account from one convenient location.
+      </p>
+    </div>
+  </div>
+</div>
+        {noAccess ? (
+          <div className="bg-surface/95 backdrop-blur-sm border rounded-2xl shadow-xl p-10 text-center">
+            <p className="text-gray-500 text-sm">
+              You do not have permission to access profile settings.
+            </p>
           </div>
-        </div>
+        ) : (
+          <div className="bg-surface/95 backdrop-blur-sm border rounded-2xl shadow-xl overflow-hidden form-col">
+            {/* Tab bar — only rendered when more than one tab is available */}
+			
+            {availableTabs.length > 1 && (
+  <div className="flex border-b border-gray-200">
+    {availableTabs.map((tab) => {
+      const active = activeTab === tab.id;
+
+      return (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => setActiveTab(tab.id)}
+          className={`flex-1 px-6 py-4 text-sm font-semibold transition-colors relative info-btn ${
+            active
+              ? 'text-[#1E7AC0] bg-[#F5FAFF]'
+              : 'text-gray-600 hover:text-[#1E7AC0] hover:bg-gray-50'
+          }`}
+          aria-selected={active}
+          role="tab"
+        >
+          <span className="flex items-center justify-center gap-2 login-col">
+            {tab.id === 'info' ? (
+              /* User Icon */
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0"
+              >
+                <path d="M20 21a8 8 0 0 0-16 0" />
+                <circle cx="12" cy="8" r="4" />
+              </svg>
+            ) : (
+              /* Lock Icon */
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0"
+              >
+                <rect x="3" y="11" width="18" height="10" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            )}
+
+            <span>{tab.label}</span>
+          </span>
+
+          {active && (
+            <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#1E7AC0]" />
+          )}
+        </button>
+      );
+    })}
+  </div>
+)}
+
+            {/* Tab panels */}
+            <div className="p-8 innner-col">
+              {activeTab === 'info' && canUpdateProfile && (
+                <ProfileInfoTab user={user} setUser={setUser} logout={logout} />
+              )}
+              {activeTab === 'password' && canChangePassword && (
+                <ChangePasswordTab logout={logout} />
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -487,13 +631,15 @@ const ProfileInfoTab = ({ user, setUser, logout }) => {
 
       {/* Submit */}
       <div className="pt-4">
-        <button
-          type="submit"
-          disabled={submitDisabled}
-          className="w-full sm:w-auto sm:min-w-[180px] flex justify-center py-3 px-6 text-sm font-semibold rounded-lg text-white bg-[#1E7AC0] hover:bg-[#1667A8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0AAFE5] transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? 'Saving…' : 'Save changes'}
-        </button>
+        <div className="flex justify-end">
+  <button
+    type="submit"
+    disabled={submitDisabled}
+    className="w-full sm:w-auto sm:min-w-[180px] flex justify-center py-3 px-6 text-sm font-semibold rounded-lg text-white bg-[#1E7AC0] hover:bg-[#1667A8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0AAFE5] transition disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    {loading ? 'Saving…' : 'Save changes'}
+  </button>
+</div>
       </div>
     </form>
   );
@@ -571,7 +717,7 @@ const ChangePasswordTab = ({ logout }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 max-w-md">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
         <div className="rounded-md bg-red-50 p-4">
           <p className="text-sm text-red-800">{error}</p>
@@ -598,7 +744,6 @@ const ChangePasswordTab = ({ logout }) => {
           onChange={handleChange}
         />
       </div>
-
       <div>
         <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
           New password
@@ -632,7 +777,7 @@ const ChangePasswordTab = ({ logout }) => {
         />
       </div>
 
-      <div className="pt-2">
+      <div className="pt-2 flex justify-end">
         <button
           type="submit"
           disabled={loading}

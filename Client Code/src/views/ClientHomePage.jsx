@@ -6,6 +6,7 @@ import {
   blockStyleToCSS,
   DEFAULT_BLOCK_STYLE,
 } from '../components/BlockRenderers';
+import '../styles/main.css';
 
 const ClientHomePage = () => {
   const [blocks, setBlocks] = useState([]);
@@ -41,7 +42,7 @@ const ClientHomePage = () => {
       </>
     );
   }
-
+	
   if (blocks.length === 0) {
     return (
       <>
@@ -55,9 +56,9 @@ const ClientHomePage = () => {
 
   return (
     <>
-      <Navigation />
+		  <Navigation isHomePage={true}/>
       {globalCSS && <style>{globalCSS}</style>}
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 home-nav">
         {blocks
           .filter((b) => !b.hidden)
           .map((block, i) => {

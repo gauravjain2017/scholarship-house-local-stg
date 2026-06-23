@@ -6,6 +6,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { dealsAPI } from '../api/deals';
 import { useAuth } from '../contexts/AuthContext';
 import { useAuthSafe } from '../contexts/AuthContext';
+import { useCustomerFilters, DEFAULT_CUSTOMER_FILTERS } from '../contexts/CustomerFiltersContext';
 import logoDarkBlue from '../assets/icons/logo-scholarship-house/logo-dark-blue.png';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -16,6 +17,7 @@ import Modal from '../components/Modal';
 import { formatNumber, unformatNumber } from '../utils/format';
 import '../styles/main.css';
 import DealDetailView from './DealDetailView';
+import { useHasPermission } from '../utils/roles';
 import DealCard, {
   hasValue,
   isTurnkeyDeal,
@@ -25,7 +27,6 @@ import DealCard, {
   SORT_OPTIONS,
   FINANCING_OPTIONS,
 } from '../components/DealCard';
-
 
 const hasAnyValue = (...values) => values.some(hasValue);
 const hasAnyObjectValue = (obj) => Object.values(obj).some(hasValue);
@@ -71,87 +72,27 @@ function getUserTypeLabel(type) {
 
 
 const CustomerView = () => {
-  const { user, isAuthenticated } = useAuthSafe();
+  const { user, isAuthenticated,roles } = useAuthSafe();
+
+  // console.log('roles : ',roles)
   // Hide address for non-admin/team members
   const canViewAddress = user?.role === 'admin' || user?.role === 'team_member';
   const isClient = user?.role === 'client';
   const isAdmin = String(user?.role || user?.userType || '').toLowerCase() === 'admin';
-  const [showFilterSidebar, setShowFilterSidebar] = useState(true);
+  const [showFilterSidebar, setShowFilterSidebar] = useState(() => window.innerWidth >= 768);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
   const { dealId } = useParams();
-  const [filters, setFilters] = useState({
-    search: '',
-    propertyType: 'All',
-    minPrice: '',
-    maxPrice: '',
-    downPayment: '',
-    sortBy: 'newest',
-    city: '',
-    stateRegion: '',
-    postalCode: '',
+  const { filters, setFilters, hasSavedBuyBox, setHasSavedBuyBox, currentPage, setCurrentPage, savedFiltersSnapshot, setSavedFiltersSnapshot } = useCustomerFilters();
+  const baseline = savedFiltersSnapshot ?? DEFAULT_CUSTOMER_FILTERS;
+  const isDirty = JSON.stringify(filters) !== JSON.stringify(baseline);
 
-    selectedStates: [],
-
-    minDownPayment: '',
-    maxDownPayment: '',
-    interestRateMin: '',
-    subjectToInterestRateMax: '',
-    advMonthlyPaymentMin: '',
-    advMonthlyPaymentMax: '',
-
-    advPropertyType: '',
-    advBedroomsMin: '',
-    advBedroomsMax: '',
-    advBathroomsMin: '',
-    advBathroomsMax: '',
-    advSqftMin: '',
-    advSqftMax: '',
-    advYearBuiltMin: '',
-    advYearBuiltMax: '',
-
-    advFinancing: '',
-    turnkeyFurnished: '',
-
-    isHOA: false,
-    hoaMonthlyFeeMax: '',
-
-    strZoning: '',
-    strConfidence: '',
-    turnkey: false,
-
-    occupancyRateMin: '',
-    occupancyRateMax: '',
-    avgNightlyRateMin: '',
-    avgNightlyRateMax: '',
-
-    anrMin_budget: '', anrMax_budget: '',
-    anrMin_economy: '', anrMax_economy: '',
-    anrMin_midscale: '', anrMax_midscale: '',
-    anrMin_upscale: '', anrMax_upscale: '',
-    anrMin_luxury: '', anrMax_luxury: '',
-
-    egrMin_budget: '', egrMax_budget: '',
-    egrMin_economy: '', egrMax_economy: '',
-    egrMin_midscale: '', egrMax_midscale: '',
-    egrMin_upscale: '', egrMax_upscale: '',
-    egrMin_luxury: '', egrMax_luxury: '',
-
-    incomeReductionMin: '',
-    incomeReductionMax: '',
-    taxSavingsMin: '',
-    taxSavingsMax: '',
-
-    priorityFirstAccess: false,
-    fiftyFiftyPartner: false,
-    doneForYou: false,
-    selectedStatuses: [],
-    vacationRentalMarkets: [],
-    travelMotivations: [],
-  });
-
-
-  const [hasSavedBuyBox, setHasSavedBuyBox] = useState(false);
   const [buyBoxModal, setBuyBoxModal] = useState({ open: false, type: '', message: '' });
   const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
 
@@ -170,22 +111,6 @@ const CustomerView = () => {
       }
     };
     fetchFilterConfig();
-  }, []);
-
-  // Fetch saved buy box filters on mount
-  useEffect(() => {
-    const fetchSavedFilters = async () => {
-      try {
-        const res = await dealsAPI.getFilter();
-        if (res?.data?.filters_json) {
-          setFilters((prev) => ({ ...prev, ...res.data.filters_json }));
-          setHasSavedBuyBox(true);
-        }
-      } catch (err) {
-        console.error('Failed to fetch saved filters:', err);
-      }
-    };
-    fetchSavedFilters();
   }, []);
 
   const [showPriceCard, setShowPriceCard] = useState(false);
@@ -222,11 +147,9 @@ const CustomerView = () => {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showPriceCard, showPropertyTypeCard, showSortByCard, showAdvancedCard]);
-  const [currentPage, setCurrentPage] = useState(1);
   const dealsPerPage = 12;
 
   const normalizedFilters = {
-    search: filters.search || '',
     propertyType: filters.propertyType !== 'All' ? filters.propertyType : null,
     sortBy: filters.sortBy || 'newest',
     // Financial filters
@@ -362,6 +285,7 @@ const CustomerView = () => {
     onSuccess: (res) => {
       console.log("Saved successfully", res);
       setHasSavedBuyBox(true);
+      setSavedFiltersSnapshot({ ...filters });
       setBuyBoxModal({ open: true, type: 'success', message: 'Buy Box saved successfully!' });
     },
     onError: (err) => {
@@ -374,6 +298,7 @@ const CustomerView = () => {
     mutationFn: () => dealsAPI.deleteFilter(),
     onSuccess: () => {
       setHasSavedBuyBox(false);
+      setSavedFiltersSnapshot(null); 
       clearAllFiltersHandler();
       setBuyBoxModal({ open: true, type: 'success', message: 'Buy Box deleted successfully!' });
     },
@@ -384,7 +309,8 @@ const CustomerView = () => {
   });
 
   const filteredDeals = (deals || []).filter((deal) => {
-    // console.log('deals : ',deals)
+    // Exclude "Needs Approval" deals (pending with no claimedAt)
+    if (deal.status === 'pending' && deal.claimedAt == null) return false;
 
     if (
       filters.propertyType !== 'All' &&
@@ -392,13 +318,17 @@ const CustomerView = () => {
     )
       return false;
 
-    if (
-      filters.search &&
-      !`${deal.title} ${deal.description}`
-        .toLowerCase()
-        .includes(filters.search.toLowerCase())
-    )
-      return false;
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      const streetNum = (deal.streetAddress || '').trim().split(' ')[0].replace(/\D/g, '');
+      const postal = (deal.postalCode || '').trim();
+      const propertyId = streetNum && postal ? `${streetNum}-${postal}` : streetNum || postal || '';
+      if (
+        !`${deal.title} ${deal.description}`.toLowerCase().includes(q) &&
+        !propertyId.toLowerCase().includes(q)
+      )
+        return false;
+    }
     if (filters.city && deal.city?.toLowerCase() !== filters.city.toLowerCase())
       return false;
 
@@ -513,6 +443,8 @@ const CustomerView = () => {
     if (filters.doneForYou && !deal.doneForYou) return false;
 
     if (filters.fiftyFiftyPartner && !deal.fiftyFiftyPartner) return false;
+
+    if (filters.fiftyFiftyPreApproved && !deal.fiftyFiftyPreApproved) return false;
 
     if (
       filters.occupancyRateMin &&
@@ -703,16 +635,25 @@ const CustomerView = () => {
               >
                 Previous
               </Button>
-              {[...Array(totalPages)].map((_, i) => (
-                <Button
-                  key={i}
-                  size="sm"
-                  variant={currentPage === i + 1 ? 'primary' : 'outline'}
-                  onClick={() => setCurrentPage(i + 1)}
-                >
-                  {i + 1}
-                </Button>
-              ))}
+              {(() => {
+                let pages;
+                if (isMobile) {
+                  const start = Math.max(0, Math.min(currentPage - 2, totalPages - 3));
+                  pages = [...Array(Math.min(3, totalPages))].map((_, i) => start + i);
+                } else {
+                  pages = [...Array(totalPages)].map((_, i) => i);
+                }
+                return pages.map((i) => (
+                  <Button
+                    key={i}
+                    size="sm"
+                    variant={currentPage === i + 1 ? 'primary' : 'outline'}
+                    onClick={() => setCurrentPage(i + 1)}
+                  >
+                    {i + 1}
+                  </Button>
+                ));
+              })()}
               <Button
                 size="sm"
                 variant="outline"
@@ -731,6 +672,7 @@ const CustomerView = () => {
   const forDeleteFilters = () => {
     setDeleteConfirmModal(true);
   };
+
 
   const forSaveFilters = () => {
     // Keys to exclude from buy box (not filter criteria)
@@ -822,8 +764,7 @@ const CustomerView = () => {
 
 
 
-  // --- CLIENT LAYOUT: collapsible sidebar filters ---
-  if (isClient) {
+  // --- CLIENT LAYOUT: collapsible sidebar fPilters ---
     return (
       <div className="bg-app min-h-screen">
         {/* Top bar */}
@@ -895,13 +836,19 @@ const CustomerView = () => {
               <aside className="w-[320px] shrink-0 bg-white border-r border-gray-200 overflow-y-auto sticky top-[57px] h-[calc(100vh-57px)] clientView">
                 <div className="px-5 py-6">
                   {/* Save Buy Box + Delete + Collapse */}
-                  <div className="flex items-center justify-between mb-5">
+                  {/* <div className="flex items-center justify-between mb-5"> */}
+                     <div className="sticky top-0 z-20 bg-white pb-4 border-b border-gray-100 flex items-center justify-between mb-5">
+
                     <div className="flex items-center gap-3">
+                      {useHasPermission('browse_property.save_buybox_filter') && (
                       <button
-                        className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`save-buy-box-btn ${isDirty ? 'is-dirty' : ''}`}
+                        title={isDirty ? 'You have unsaved filter changes' : 'Save current filters as your Buy Box'}
                         onClick={forSaveFilters}
                         disabled={saveFilterMutation.isPending}
                       >
+
+                        
                         {saveFilterMutation.isPending ? (
                           <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -913,7 +860,7 @@ const CustomerView = () => {
                           </svg>
                         )}
                         {saveFilterMutation.isPending ? 'Saving...' : 'Save Buy Box'}
-                      </button>
+                      </button>)}
                       {hasSavedBuyBox && (
                         <button
                           className="inline-flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-700 transition-colors"
@@ -952,7 +899,7 @@ const CustomerView = () => {
                         placeholder="Search..."
                         value={filters.search}
                         onChange={(e) => {
-                          setFilters((p) => ({ ...p, search: e.target.value }));
+                          setFilters((p) => ({ ...p, search: e.target.value.replace(/\s/g, '') }));
                           setCurrentPage(1);
                         }}
                         className="w-full text-sm text-gray-700 placeholder-gray-400 bg-transparent outline-none"
@@ -1067,85 +1014,8 @@ const CustomerView = () => {
         </Modal>
       </div>
     );
-  }
-
-  // --- ADMIN / TEAM MEMBER LAYOUT (unchanged) ---
-  return (
-    <div className="bg-app min-h-screen">
-      <div className="container mx-auto px-4 pt-2 pb-8">
-        <div className="md:mb-8 mt-3 mb-6">
-          <div className="bg-surface border border-border-subtle rounded-3xl md:p-10 md:mb-4 shadow-sm mb-5 p-5">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center md:mb-2 mb-0">
-              <div />
-              <div className="flex items-center justify-center md:gap-3 gap-1 propertie_box">
-                <img
-                  src={logoDarkBlue}
-                  alt="Scholarship House"
-                  className="h-14 w-auto opacity-80"
-                />
-                <h1 className="text-4xl font-bold text-primary">
-                  Browse Properties
-                </h1>
-              </div>
-              <div />
-            </div>
-
-            <p className="text-center text-text-secondary md:mb-6 mb-2">
-              Search for real estate properties
-            </p>
-            <div className="h-1 w-32 bg-accent rounded-full mx-auto mb-2" />
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-surface border border-border-subtle rounded-2xl p-4 shadow-sm mb-6 adminFilter">
-          <FilterBar
-            filters={filters}
-            setFilters={setFilters}
-            setCurrentPage={setCurrentPage}
-            PROPERTY_TYPES={PROPERTY_TYPES}
-            SORT_OPTIONS={SORT_OPTIONS}
-            FINANCING_OPTIONS={FINANCING_OPTIONS}
-            showPropertyTypeCard={showPropertyTypeCard}
-            setShowPropertyTypeCard={setShowPropertyTypeCard}
-            showPriceCard={showPriceCard}
-            setShowPriceCard={setShowPriceCard}
-            showSortByCard={showSortByCard}
-            setShowSortByCard={setShowSortByCard}
-            showAdvancedCard={showAdvancedCard}
-            setShowAdvancedCard={setShowAdvancedCard}
-            propertyTypeCardRef={propertyTypeCardRef}
-            priceCardRef={priceCardRef}
-            sortByCardRef={sortByCardRef}
-            advCardRef={advCardRef}
-            advToggleRef={advToggleRef}
-            filterConfig={filterConfig}
-          />
-          <div className="flex items-center justify-between mb-6">
-            <p className="text-sm text-text-secondary">
-              Showing{' '}
-              {paginatedNonFavoritedDeals.length} of{' '}
-              {sortedDeals.length} propert
-              {sortedDeals.length !== 1 ? 'ies' : 'y'}
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={clearAllFiltersHandler}
-            >
-              Clear Filters
-            </Button>
-          </div>
-        </div>
-
-        {renderPropertyGrid('grid-cols-1 sm:grid-cols-2 md:grid-cols-3')}
-      </div>
-    </div>
-  );
+ 
 };
-
-
-
 export { DealDetailView };
 export default CustomerView;
 

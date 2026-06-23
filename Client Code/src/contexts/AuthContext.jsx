@@ -16,7 +16,7 @@ const AuthContext = createContext(null);
 // Only these roles are permitted to log in to the client portal.
 // Any user whose role is not in this list will be rejected and no
 // session will be created for them.
-const ALLOWED_ROLES = ['client'];
+// const ALLOWED_ROLES = ['client'];
 
 /* -------------------- hooks -------------------- */
 
@@ -31,18 +31,39 @@ export const useAuthSafe = () =>
 
 /* -------------------- helpers -------------------- */
 
+// function normalizeAuthUser(rawUser) {
+//   const canonicalRole = getCanonicalRole(
+//     rawUser.userType ?? rawUser.role ?? rawUser.access
+//   );
+
+//   return {
+//     user: {
+//       ...rawUser,
+//       role: canonicalRole,
+//       isClient: canonicalRole === 'client',
+//     },
+//     permissions: getPermissionsForRole(canonicalRole),
+//   };
+// }
+
 function normalizeAuthUser(rawUser) {
   const canonicalRole = getCanonicalRole(
     rawUser.userType ?? rawUser.role ?? rawUser.access
   );
 
+  // Use permissions stored in DB if any are assigned; otherwise fall back
+  // to the hardcoded role-based defaults (e.g. admin always gets full access).
+  const stored = rawUser.assignedPermissions;
+  const hasStored = stored && Object.values(stored).some(Boolean);
+  const permissions = hasStored ? stored : getPermissionsForRole(canonicalRole);
+
   return {
     user: {
       ...rawUser,
       role: canonicalRole,
-      isClient: canonicalRole === 'client',
+      isSubmitter: canonicalRole === 'submitter',
     },
-    permissions: getPermissionsForRole(canonicalRole),
+    permissions,
   };
 }
 
@@ -53,6 +74,7 @@ export const AuthProvider = ({ children }) => {
 
   const [user, setUser] = useState(null);
   const [permissions, setPermissions] = useState(null);
+  const [roles, setRoles] = useState([]);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [sessionToken, setSessionToken] = useState(
     localStorage.getItem('sessionToken')
@@ -61,6 +83,15 @@ export const AuthProvider = ({ children }) => {
   const [sessionError, setSessionError] = useState(null); // For session invalidation messages
 
   /* -------------------- logout -------------------- */
+
+  useEffect(() => {
+    authAPI.getPublicRoles('client')
+      .then((res) => setRoles(res.data || []))
+      .catch(() => setRoles([]));
+  }, []);
+
+  const ALLOWED_ROLES = roles.map(item => item.role_slug);
+
 
   const logout = useCallback(
     async (message = null) => {
@@ -121,7 +152,7 @@ export const AuthProvider = ({ children }) => {
             // Defensive: if the stored user is not an allowed role
             // (e.g. a submitter/admin session left over in the same browser),
             // do NOT restore it. Clear it so nothing leaks into the client app.
-            if (!ALLOWED_ROLES.includes(normalized.user.role)) {
+            if (ALLOWED_ROLES.length > 0  && !ALLOWED_ROLES.includes(normalized.user.role)) {
               localStorage.removeItem('submitterUser');
               localStorage.removeItem('sessionToken');
               return;
@@ -149,7 +180,7 @@ export const AuthProvider = ({ children }) => {
 
         // Defensive: server returned a profile whose role is not allowed
         // in the client portal. Tear down the session immediately.
-        if (!ALLOWED_ROLES.includes(normalized.user.role)) {
+        if (ALLOWED_ROLES.length > 0  && !ALLOWED_ROLES.includes(normalized.user.role)) {
           logout();
           return;
         }
@@ -200,7 +231,7 @@ export const AuthProvider = ({ children }) => {
 
       // Defensive frontend guard: even if the backend lets it slip through,
       // never treat a non-client login as successful in this app.
-      if (!ALLOWED_ROLES.includes(normalized.user.role)) {
+      if (ALLOWED_ROLES.length > 0 && !ALLOWED_ROLES.includes(normalized.user.role)) {
         return {
           success: false,
           error:
@@ -233,6 +264,8 @@ export const AuthProvider = ({ children }) => {
         success: false,
         error: errorData.error || err.message || 'Login failed',
         code: errorData.code || null,
+        correctPortalUrl: errorData.correctPortalUrl || null,
+        correctPortalName: errorData.correctPortalName || null,
       };
     }
   };
@@ -287,6 +320,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     permissions,
+    roles,
     token,
     sessionToken,
     loading,

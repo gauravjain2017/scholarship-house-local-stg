@@ -1291,34 +1291,30 @@ export function PropertiesSliderBlock({ data }) {
       {/* Slider Container */}
       <div style={{ position: "relative" }}>
         {/* Left Arrow */}
-        {!mobile && (
-          <button
-            onClick={() => scroll(-1)}
-            style={{
-              position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", zIndex: 2,
-              width: arrowSize, height: arrowSize, borderRadius: "50%", border: "1px solid #e2e8f0",
-              background: "#fff", cursor: "pointer", display: "flex", alignItems: "center",
-              justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", fontSize: mobile ? 14 : 18, color: "#475569", padding: 0,
-            }}
-          >
-            &#8249;
-          </button>
-        )}
+        <button
+          onClick={() => scroll(-1)}
+          style={{
+            position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", zIndex: 2,
+            width: arrowSize, height: arrowSize, borderRadius: "50%", border: "1px solid #e2e8f0",
+            background: "#fff", cursor: "pointer", display: "flex", alignItems: "center",
+            justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", fontSize: mobile ? 14 : 18, color: "#475569", padding: 0,
+          }}
+        >
+          &#8249;
+        </button>
 
         {/* Right Arrow */}
-        {!mobile && (
-          <button
-            onClick={() => scroll(1)}
-            style={{
-              position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", zIndex: 2,
-              width: arrowSize, height: arrowSize, borderRadius: "50%", border: "1px solid #e2e8f0",
-              background: "#fff", cursor: "pointer", display: "flex", alignItems: "center",
-              justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", fontSize: mobile ? 14 : 18, color: "#475569", padding: 0,
-            }}
-          >
-            &#8250;
-          </button>
-        )}
+        <button
+          onClick={() => scroll(1)}
+          style={{
+            position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", zIndex: 2,
+            width: arrowSize, height: arrowSize, borderRadius: "50%", border: "1px solid #e2e8f0",
+            background: "#fff", cursor: "pointer", display: "flex", alignItems: "center",
+            justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", fontSize: mobile ? 14 : 18, color: "#475569", padding: 0,
+          }}
+        >
+          &#8250;
+        </button>
 
         {/* Scrollable Cards */}
         <div

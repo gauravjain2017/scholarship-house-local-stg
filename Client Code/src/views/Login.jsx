@@ -18,6 +18,8 @@ const Login = () => {
   const [error, setError] = useState(
     () => sessionError || sessionStorage.getItem('sessionExpiredMessage') || ''
   );
+  const [correctPortalUrl, setCorrectPortalUrl] = useState('');
+  const [correctPortalName, setCorrectPortalName] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const passwordInputRef = useRef(null);
@@ -40,6 +42,8 @@ const Login = () => {
       [e.target.name]: e.target.value,
     });
     setError('');
+    setCorrectPortalUrl('');
+    setCorrectPortalName('');
   };
 
   const handleSubmit = async (e) => {
@@ -95,6 +99,10 @@ const Login = () => {
         setError(
           'No client account found with this email address. Please use a client email to sign in.'
         );
+        if (result.correctPortalUrl) {
+          setCorrectPortalUrl(result.correctPortalUrl);
+          setCorrectPortalName(result.correctPortalName || 'correct portal');
+        }
       } else {
         setError('Login failed: ' + errorMsg);
       }
@@ -126,7 +134,21 @@ const Login = () => {
         <form className="space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="rounded-md bg-red-50 p-4">
-              <p className="text-sm text-red-800">{error}</p>
+              <p className="text-sm text-red-800">
+                {error}
+                {correctPortalUrl && (
+                  <span>
+                    {' '}Please sign in at the{' '}
+                    <a
+                      href={correctPortalUrl}
+                      className="font-semibold underline hover:opacity-75"
+                    >
+                      {correctPortalName} Portal
+                    </a>
+                    .
+                  </span>
+                )}
+              </p>
             </div>
           )}
           <div className="rounded-md shadow-sm space-y-1">

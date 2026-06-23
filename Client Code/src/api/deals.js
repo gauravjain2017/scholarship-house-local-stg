@@ -393,6 +393,35 @@ export const dealsAPI = {
     return response.data;
   },
 
+  // "I want this Scholarship House" — claim a property.
+  // Server will:
+  //   1. flip properties.status  published → pending
+  //   2. record claimedBy / claimedAt / pendingReason
+  //   3. email Lance, Kailey, and Kyler
+  claimProperty: async (dealId) => {
+    if (USE_MOCK) {
+      await delay();
+      const deal = mockDeals.find((d) => d.id === dealId);
+      if (!deal) throw new Error('Deal not found');
+      if (deal.status !== 'published') {
+        throw new Error(
+          `This property is not available to claim (status: ${deal.status}).`
+        );
+      }
+      deal.status = 'pending';
+      deal.claimedAt = new Date().toISOString();
+      deal.pendingReason = 'awaiting_mou_and_wire';
+      return {
+        success: true,
+        message:
+          'Property marked as pending. The team has been notified and will reach out about the MOU and $5k wire.',
+        deal,
+      };
+    }
+    const response = await api.post(`/deals/${dealId}/claim`);
+    return response.data;
+  },
+
   // Public endpoint — no auth required
   getPublicDealById: async (dealId) => {
     if (USE_MOCK) {

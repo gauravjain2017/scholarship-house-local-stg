@@ -6,6 +6,8 @@ import ProfileMenu from './ProfileMenu';
 import { getCanonicalRole } from '../utils/roles';
 import logoTitleBlack from '../assets/icons/logo-scholarship-house/logo-title-black.png';
 import { notificationsAPI } from '../api/notifications';
+import { useHasPermission } from '../utils/roles';
+import '../styles/main.css';
 
 const BellIcon = () => (
   <svg
@@ -24,8 +26,9 @@ const BellIcon = () => (
   </svg>
 );
 
-const Navigation = () => {
-  const { user, isAuthenticated } = useAuth();
+const Navigation = ({ isHomePage = false }) => {
+	  const { user, isAuthenticated, roles } = useAuth();
+  console.log('Roles : ', roles)
   const location = useLocation();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -44,43 +47,38 @@ const Navigation = () => {
 
   tabs.push({ path: '/', label: 'Home' });
 
-  // --- Submit Property ---
-  if (
-    ['submitter', 'team_member', 'admin'].includes(
-      getCanonicalRole(user?.userType)
-    )
-  ) {
-    tabs.push({ path: '/submit', label: 'Submit Property' });
-  }
-
-  // --- Admin ---
-  if (['admin', 'team_member'].includes(getCanonicalRole(user?.userType))) {
-    tabs.push({ path: '/admin', label: 'Admin Dashboard' });
-  }
 
   // --- Browse Properties ---
-  if (
-    ['client', 'team_member', 'admin'].includes(
-      getCanonicalRole(user?.userType)
-    )
-  ) {
+
+  if (useHasPermission('browse_property.can_view')) {
     tabs.push({ path: '/deals', label: 'Browse Properties' });
-    tabs.push({ path: '/favorite-properties', label: 'Favorite Properties' });
   }
+
+  if (useHasPermission('favorite_property.can_view')) {
+    tabs.push({ path: '/favorite-properties', label: 'Favorite Properties' });
+
+  }
+
+  // --- Calculator ---
+  if (isAuthenticated) {
+    tabs.push({ path: '/calculator', label: 'JV Calculator' });
+  }
+
 
 
   tabs.push({ path: '/dashboard', label: 'Dashboard' });
-  
-  
-    // --- My Profile (everyone authenticated) ---
-  if (user) {
+
+
+  // --- My Profile (everyone authenticated) ---
+  if (user && useHasPermission('my_profile.can_view')) {
     tabs.push({ path: '/profile', label: 'My Profile' });
   }
-  
+
 
   const isActive = (path) => {
     if (path === '/') return location.pathname === '/';
     if (path === '/deals') return location.pathname.startsWith('/deals');
+    if (path === '/calculator') return location.pathname === '/calculator';
     return location.pathname === path;
   };
 
@@ -98,8 +96,12 @@ const Navigation = () => {
   const unreadCount = (notifications || []).filter((n) => !n.notify).length;
 
   return (
-    <nav className="bg-surface shadow-md border-b-2 border-accent relative mb-2">
-	
+    <nav
+	  className={`bg-surface shadow-md border-b-2 border-accent relative ${
+		isHomePage ? "homepage-nav" : "mb-2"
+	  }`}
+	>
+
       <div className="w-full px-[10px] md:px-6">
         <div className="flex items-center justify-between h-20">
           <Link to="/" className="flex items-center py-2 logo_img">
@@ -128,7 +130,7 @@ const Navigation = () => {
                 ))}
 
                 {/* Notification Bell — shows real unread count */}
-                <Link
+                {useHasPermission('property_notification.can_view') && (<Link
                   to="/property-notifications"
                   className={`relative flex items-center justify-center w-10 h-10 rounded-lg mr-2 transition-colors ${isNotifActive
                     ? 'bg-surface-muted text-primary'
@@ -145,15 +147,15 @@ const Navigation = () => {
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
-                </Link>
+                </Link>)}
 
                 <ProfileMenu />
               </div>
 
               {/* Mobile: bell + hamburger */}
-           
-			    <div className="flex items-center md:hidden profile_menu_mob">
-               <Link
+
+              <div className="flex items-center md:hidden profile_menu_mob">
+                {useHasPermission('property_notification.can_view') && (<Link
                   to="/property-notifications"
                   className={`relative flex items-center md:justify-center justify-end w-10 h-10 rounded-lg md:mr-1 mr-0 transition-colors ${isNotifActive
                     ? 'text-primary'
@@ -170,7 +172,7 @@ const Navigation = () => {
                       {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                   )}
-                </Link>
+                </Link>)}
                 <ProfileMenu />
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -209,11 +211,10 @@ const Navigation = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`px-6 py-3 font-medium transition-colors ${
-                  isActive(item.path)
+                className={`px-6 py-3 font-medium transition-colors nav-bar ${isActive(item.path)
                     ? 'bg-accent/10 text-primary border-l-4 border-accent'
                     : 'text-gray-700 hover:bg-surface-alt border-l-4 border-transparent'
-                }`}
+                  }`}
               >
                 {item.label}
               </Link>
